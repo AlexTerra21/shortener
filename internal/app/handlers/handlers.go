@@ -30,7 +30,7 @@ func storeURL(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(resp)
 	w.Header().Set("content-type", "application/text")
 	w.WriteHeader(http.StatusCreated) // устанавливаем код 201
-	w.Write([]byte(resp))
+	_, _ = w.Write([]byte(resp))
 }
 
 func getURL(w http.ResponseWriter, r *http.Request) {
@@ -38,5 +38,5 @@ func getURL(w http.ResponseWriter, r *http.Request) {
 	url := storage.Storage[id]
 	w.Header().Set("Location", url)
 	w.WriteHeader(http.StatusTemporaryRedirect) // устанавливаем код 307
-	w.Write([]byte(""))
+	_, _ = w.Write([]byte(""))
 }
