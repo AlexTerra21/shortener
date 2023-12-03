@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -27,7 +26,6 @@ func storeURL(w http.ResponseWriter, r *http.Request) {
 	id := utils.RandSeq(8)
 	storage.Storage[id] = string(url)
 	resp := "http://localhost:8080/" + id
-	fmt.Println(resp)
 	w.Header().Set("content-type", "application/text")
 	w.WriteHeader(http.StatusCreated) // устанавливаем код 201
 	_, _ = w.Write([]byte(resp))
