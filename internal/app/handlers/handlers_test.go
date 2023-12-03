@@ -18,14 +18,14 @@ func TestHandlers_storeURL_getURL(t *testing.T) {
 	utils.RandInit()
 	storage.Storage = make(map[string]string)
 	// Данные для теста
-	requestedUrl := "https://practicum.yandex.ru/"
+	requestedURL := "https://practicum.yandex.ru/"
 	postCode := http.StatusCreated
 	postResponse := "http://localhost:8080/"
 	postContentType := "application/text"
 	getCode := http.StatusTemporaryRedirect
 	testName := "complex test store and get url #1"
 	t.Run(testName, func(t *testing.T) {
-		bodyReader := strings.NewReader(requestedUrl)
+		bodyReader := strings.NewReader(requestedURL)
 		requestPost := httptest.NewRequest(http.MethodPost, "/", bodyReader)
 		wPost := httptest.NewRecorder()
 
@@ -49,28 +49,11 @@ func TestHandlers_storeURL_getURL(t *testing.T) {
 		getURL(wGet, requestGet)
 
 		resGet := wGet.Result()
+		defer resGet.Body.Close()
 		assert.Equal(t, getCode, resGet.StatusCode)
-		assert.Equal(t, requestedUrl, resGet.Header.Get("Location"))
+		assert.Equal(t, requestedURL, resGet.Header.Get("Location"))
 
 	})
-}
-
-func TestHandlers_getURL(t *testing.T) {
-	type args struct {
-		w http.ResponseWriter
-		r *http.Request
-	}
-	tests := []struct {
-		name string
-		args args
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			getURL(tt.args.w, tt.args.r)
-		})
-	}
 }
 
 func TestHandlers_MainHandler(t *testing.T) {
@@ -90,6 +73,8 @@ func TestHandlers_MainHandler(t *testing.T) {
 			MainHandler(w, request)
 
 			res := w.Result()
+			defer res.Body.Close()
+
 			// проверяем код ответа
 			assert.Equal(t, tt.code, res.StatusCode)
 
