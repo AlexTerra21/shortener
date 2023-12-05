@@ -1,24 +1,25 @@
 package handlers
 
 import (
+	"fmt"
 	"io"
 	"net/http"
-	"strings"
 
 	"github.com/AlexTerra21/shortener/internal/app/storage"
 	"github.com/AlexTerra21/shortener/internal/app/utils"
+	"github.com/go-chi/chi"
 )
 
-func MainHandler(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodPost:
-		storeURL(w, r)
-	case http.MethodGet:
-		getURL(w, r)
-	default:
-		http.Error(w, "Unsupported method", http.StatusBadRequest)
-	}
+func MainRouter() chi.Router {
+	r := chi.NewRouter()
+	r.Post("/", storeURL)
+	r.Get("/{id}", getURL)
+	r.MethodNotAllowed(notAllowedHandler)
+	return r
+}
 
+func notAllowedHandler(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "Unsupported method", http.StatusBadRequest) // В ответе код 400
 }
 
 func storeURL(w http.ResponseWriter, r *http.Request) {
@@ -32,7 +33,8 @@ func storeURL(w http.ResponseWriter, r *http.Request) {
 }
 
 func getURL(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, "/")
+	fmt.Println("getURL")
+	id := chi.URLParam(r, "id")
 	url := storage.Storage[id]
 	w.Header().Set("Location", url)
 	w.WriteHeader(http.StatusTemporaryRedirect) // устанавливаем код 307

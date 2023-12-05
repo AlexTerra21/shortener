@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/AlexTerra21/shortener/internal/app/handlers"
@@ -19,5 +20,6 @@ func main() {
 func run() error {
 	utils.RandInit()
 	storage.Storage = make(map[string]string)
-	return http.ListenAndServe(`:8080`, http.HandlerFunc(handlers.MainHandler))
+	fmt.Println("Http server running on http://localhost:8080")
+	return http.ListenAndServe(`:8080`, handlers.MainRouter())
 }

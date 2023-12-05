@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -9,14 +8,20 @@ import (
 
 	"github.com/AlexTerra21/shortener/internal/app/storage"
 	"github.com/AlexTerra21/shortener/internal/app/utils"
+	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestHandlers_storeURL_getURL(t *testing.T) {
 	// Инициализация сервисов
 	utils.RandInit()
 	storage.Storage = make(map[string]string)
+
+	// запускаем тестовый сервер, будет выбран первый свободный порт
+	srv := httptest.NewServer(MainRouter())
+	// останавливаем сервер после завершения теста
+	defer srv.Close()
+
 	// Данные для теста
 	requestedURL := "https://practicum.yandex.ru/"
 	postCode := http.StatusCreated
@@ -24,60 +29,57 @@ func TestHandlers_storeURL_getURL(t *testing.T) {
 	postContentType := "application/text"
 	getCode := http.StatusTemporaryRedirect
 	testName := "complex test store and get url #1"
+	serverURL := srv.URL
 	t.Run(testName, func(t *testing.T) {
-		bodyReader := strings.NewReader(requestedURL)
-		requestPost := httptest.NewRequest(http.MethodPost, "/", bodyReader)
-		wPost := httptest.NewRecorder()
+		client := resty.New()
+		resp, err := client.R().
+			SetBody(requestedURL).
+			Post(serverURL)
+		assert.NoError(t, err)
+		assert.Equal(t, postCode, resp.StatusCode()) // 201
+		assert.Equal(t, postContentType, resp.Header().Get("Content-Type"))
 
-		storeURL(wPost, requestPost)
-
-		resPost := wPost.Result()
-		assert.Equal(t, postCode, resPost.StatusCode)
-		defer resPost.Body.Close()
-		resBody, err := io.ReadAll(resPost.Body)
-		require.NoError(t, err)
-		assert.Contains(t, string(resBody), postResponse)
-		assert.Equal(t, postContentType, resPost.Header.Get("Content-Type"))
-
-		id := strings.TrimPrefix(string(resBody), postResponse)
-
-		t.Logf("ID = %s", id)
-
-		requestGet := httptest.NewRequest(http.MethodGet, "/"+id, nil)
-		wGet := httptest.NewRecorder()
-
-		getURL(wGet, requestGet)
-
-		resGet := wGet.Result()
-		defer resGet.Body.Close()
-		assert.Equal(t, getCode, resGet.StatusCode)
-		assert.Equal(t, requestedURL, resGet.Header.Get("Location"))
-
+		id := strings.TrimPrefix(string(resp.Body()), postResponse)
+		// Отключаем авто редирект, что бы поймать ответ метода getURL
+		client.SetRedirectPolicy(resty.NoRedirectPolicy())
+		resp, err = client.R().
+			SetPathParams(map[string]string{
+				"ID": id,
+			}).
+			Get(serverURL + "/{ID}")
+		assert.Error(t, err)                        // Ошибка auto redirect is disabled
+		assert.Equal(t, getCode, resp.StatusCode()) // 307
+		assert.Equal(t, requestedURL, resp.Header().Get("Location"))
 	})
 }
 
 func TestHandlers_MainHandler(t *testing.T) {
+	// запускаем тестовый сервер, будет выбран первый свободный порт
+	srv := httptest.NewServer(MainRouter())
+	// останавливаем сервер после завершения теста
+	defer srv.Close()
 	tests := []struct {
-		name string
-		code int
+		name   string
+		method string
+		code   int
+		body   string
 	}{
 		{
-			name: "negative PUT request test #1",
-			code: http.StatusBadRequest,
+			name:   "negative PUT request test #1",
+			method: http.MethodPut,
+			code:   http.StatusBadRequest,
+			body:   "Unsupported method\n",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			request := httptest.NewRequest(http.MethodPut, "/", nil)
-			w := httptest.NewRecorder()
-			MainHandler(w, request)
-
-			res := w.Result()
-			defer res.Body.Close()
-
-			// проверяем код ответа
-			assert.Equal(t, tt.code, res.StatusCode)
-
+			req := resty.New().R()
+			req.Method = tt.method
+			req.URL = srv.URL
+			resp, err := req.Send()
+			assert.NoError(t, err, "error making HTTP request")
+			assert.Equal(t, tt.code, resp.StatusCode(), "Response code didn't match expected")
+			assert.Equal(t, tt.body, string(resp.Body()))
 		})
 	}
 }
