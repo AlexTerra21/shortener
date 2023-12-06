@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/AlexTerra21/shortener/internal/app/config"
 	"github.com/AlexTerra21/shortener/internal/app/storage"
 	"github.com/AlexTerra21/shortener/internal/app/utils"
 	"github.com/go-resty/resty/v2"
@@ -16,16 +17,17 @@ func TestHandlers_storeURL_getURL(t *testing.T) {
 	// Инициализация сервисов
 	utils.RandInit()
 	storage.Storage = make(map[string]string)
-
+	config := config.NewConfig()
+	config.SetServerStartURL(":8080")
+	config.SetReturnURL("http://localhost:8080/")
 	// запускаем тестовый сервер, будет выбран первый свободный порт
-	srv := httptest.NewServer(MainRouter())
+	srv := httptest.NewServer(MainRouter(config))
 	// останавливаем сервер после завершения теста
 	defer srv.Close()
 
 	// Данные для теста
 	requestedURL := "https://practicum.yandex.ru/"
 	postCode := http.StatusCreated
-	postResponse := "http://localhost:8080/"
 	postContentType := "application/text"
 	getCode := http.StatusTemporaryRedirect
 	testName := "complex test store and get url #1"
@@ -39,7 +41,7 @@ func TestHandlers_storeURL_getURL(t *testing.T) {
 		assert.Equal(t, postCode, resp.StatusCode()) // 201
 		assert.Equal(t, postContentType, resp.Header().Get("Content-Type"))
 
-		id := strings.TrimPrefix(string(resp.Body()), postResponse)
+		id := strings.TrimPrefix(string(resp.Body()), config.ReturnURL)
 		// Отключаем авто редирект, что бы поймать ответ метода getURL
 		client.SetRedirectPolicy(resty.NoRedirectPolicy())
 		resp, err = client.R().
@@ -54,8 +56,11 @@ func TestHandlers_storeURL_getURL(t *testing.T) {
 }
 
 func TestHandlers_MainHandler(t *testing.T) {
+	config := config.NewConfig()
+	config.SetServerStartURL(":8080")
+	config.SetReturnURL("http://localhost:8080/")
 	// запускаем тестовый сервер, будет выбран первый свободный порт
-	srv := httptest.NewServer(MainRouter())
+	srv := httptest.NewServer(MainRouter(config))
 	// останавливаем сервер после завершения теста
 	defer srv.Close()
 	tests := []struct {
