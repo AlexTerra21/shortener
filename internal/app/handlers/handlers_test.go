@@ -19,7 +19,7 @@ func TestHandlers_storeURL_getURL(t *testing.T) {
 	storage.Storage = make(map[string]string)
 	config := config.NewConfig()
 	config.SetServerStartURL(":8080")
-	config.SetReturnURL("http://localhost:8080/")
+	config.SetReturnURL("http://localhost:8080")
 	// запускаем тестовый сервер, будет выбран первый свободный порт
 	srv := httptest.NewServer(MainRouter(config))
 	// останавливаем сервер после завершения теста
@@ -40,8 +40,9 @@ func TestHandlers_storeURL_getURL(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, postCode, resp.StatusCode()) // 201
 		assert.Equal(t, postContentType, resp.Header().Get("Content-Type"))
-
-		id := strings.TrimPrefix(string(resp.Body()), config.ReturnURL)
+		// Получить ID из ответа
+		parseID := strings.Split(string(resp.Body()), "/")
+		id := parseID[len(parseID)-1]
 		// Отключаем авто редирект, что бы поймать ответ метода getURL
 		client.SetRedirectPolicy(resty.NoRedirectPolicy())
 		resp, err = client.R().
@@ -58,7 +59,7 @@ func TestHandlers_storeURL_getURL(t *testing.T) {
 func TestHandlers_MainHandler(t *testing.T) {
 	config := config.NewConfig()
 	config.SetServerStartURL(":8080")
-	config.SetReturnURL("http://localhost:8080/")
+	config.SetReturnURL("http://localhost:8080")
 	// запускаем тестовый сервер, будет выбран первый свободный порт
 	srv := httptest.NewServer(MainRouter(config))
 	// останавливаем сервер после завершения теста
