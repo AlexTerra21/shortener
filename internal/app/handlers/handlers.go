@@ -27,7 +27,7 @@ func storeURL(c *config.Config) http.HandlerFunc {
 		url, _ := io.ReadAll(r.Body)
 		id := utils.RandSeq(8)
 		storage.Storage[id] = string(url)
-		resp := c.ReturnURL + id
+		resp := c.ReturnURL + "/" + id
 		w.Header().Set("content-type", "application/text")
 		w.WriteHeader(http.StatusCreated) // устанавливаем код 201
 		_, _ = w.Write([]byte(resp))

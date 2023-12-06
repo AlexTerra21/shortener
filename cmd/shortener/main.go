@@ -15,7 +15,7 @@ func parseFlags() *config.Config {
 	config := config.NewConfig()
 
 	start := flag.String("a", ":8080", "address and port to run server")
-	ret := flag.String("b", "http://localhost:8080/", "address and port to return")
+	ret := flag.String("b", "http://localhost:8080", "address and port to return")
 
 	flag.Parse()
 	config.SetServerStartURL(*start)
@@ -24,7 +24,7 @@ func parseFlags() *config.Config {
 }
 
 // ./cmd/shortener/shortener.exe --help
-// ./cmd/shortener/shortener.exe -a=:8091 -b=http://localhost:8085/
+// ./cmd/shortener/shortener.exe -a=:8091 -b=http://localhost:8085
 // функция main вызывается автоматически при запуске приложения
 func main() {
 	if err := run(); err != nil {
