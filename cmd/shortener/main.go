@@ -4,22 +4,28 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/AlexTerra21/shortener/internal/app/config"
 	"github.com/AlexTerra21/shortener/internal/app/handlers"
-	"github.com/AlexTerra21/shortener/internal/app/storage"
 	"github.com/AlexTerra21/shortener/internal/app/utils"
 )
 
 func parseFlags() *config.Config {
 	config := config.NewConfig()
 
-	start := flag.String("a", ":8080", "address and port to run server")
-	ret := flag.String("b", "http://localhost:8080", "address and port to return")
+	serverAddress := flag.String("a", ":8080", "address and port to run server")
+	baseURL := flag.String("b", "http://localhost:8080", "address and port to return")
 
 	flag.Parse()
-	config.SetServerStartURL(*start)
-	config.SetReturnURL(*ret)
+	if serverAddressEnv := os.Getenv("SERVER_ADDRESS"); serverAddressEnv != "" {
+		serverAddress = &serverAddressEnv
+	}
+	if baseURLEnv := os.Getenv("BASE_URL"); baseURLEnv != "" {
+		baseURL = &baseURLEnv
+	}
+	config.SetServerAddress(*serverAddress)
+	config.SetBaseURL(*baseURL)
 	return config
 }
 
@@ -37,7 +43,6 @@ func run() error {
 	config := parseFlags()
 	config.Print()
 	utils.RandInit()
-	storage.Storage = make(map[string]string)
-	fmt.Println("Running server on", config.ServerStartURL)
-	return http.ListenAndServe(config.ServerStartURL, handlers.MainRouter(config))
+	fmt.Println("Running server on", config.ServerAddress)
+	return http.ListenAndServe(config.ServerAddress, handlers.MainRouter(config))
 }

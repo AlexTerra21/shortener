@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/AlexTerra21/shortener/internal/app/config"
-	"github.com/AlexTerra21/shortener/internal/app/storage"
 	"github.com/AlexTerra21/shortener/internal/app/utils"
 	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
@@ -16,10 +15,9 @@ import (
 func TestHandlers_storeURL_getURL(t *testing.T) {
 	// Инициализация сервисов
 	utils.RandInit()
-	storage.Storage = make(map[string]string)
 	config := config.NewConfig()
-	config.SetServerStartURL(":8080")
-	config.SetReturnURL("http://localhost:8080")
+	config.SetServerAddress(":8080")
+	config.SetBaseURL("http://localhost:8080")
 	// запускаем тестовый сервер, будет выбран первый свободный порт
 	srv := httptest.NewServer(MainRouter(config))
 	// останавливаем сервер после завершения теста
@@ -58,8 +56,8 @@ func TestHandlers_storeURL_getURL(t *testing.T) {
 
 func TestHandlers_MainHandler(t *testing.T) {
 	config := config.NewConfig()
-	config.SetServerStartURL(":8080")
-	config.SetReturnURL("http://localhost:8080")
+	config.SetServerAddress(":8080")
+	config.SetBaseURL("http://localhost:8080")
 	// запускаем тестовый сервер, будет выбран первый свободный порт
 	srv := httptest.NewServer(MainRouter(config))
 	// останавливаем сервер после завершения теста

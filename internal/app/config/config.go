@@ -1,28 +1,34 @@
 package config
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/AlexTerra21/shortener/internal/app/storage"
+)
 
 type Config struct {
-	ServerStartURL string
-	ReturnURL      string
+	ServerAddress string
+	BaseURL       string
+	Storage       storage.Storage
 }
 
 func NewConfig() *Config {
 	return &Config{
-		ServerStartURL: "",
-		ReturnURL:      "",
+		ServerAddress: "",
+		BaseURL:       "",
+		Storage:       *storage.NewStorage(),
 	}
 }
 
-func (c *Config) SetServerStartURL(s string) {
-	c.ServerStartURL = s
+func (c *Config) SetServerAddress(s string) {
+	c.ServerAddress = s
 }
 
-func (c *Config) SetReturnURL(s string) {
-	c.ReturnURL = s
+func (c *Config) SetBaseURL(s string) {
+	c.BaseURL = s
 }
 
 func (c *Config) Print() {
-	fmt.Println(c.ServerStartURL)
-	fmt.Println(c.ReturnURL)
+	fmt.Println(c.ServerAddress)
+	fmt.Println(c.BaseURL)
 }

@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/AlexTerra21/shortener/internal/app/config"
-	"github.com/AlexTerra21/shortener/internal/app/storage"
 	"github.com/AlexTerra21/shortener/internal/app/utils"
 	"github.com/go-chi/chi"
 )
@@ -26,8 +25,8 @@ func storeURL(c *config.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		url, _ := io.ReadAll(r.Body)
 		id := utils.RandSeq(8)
-		storage.Storage[id] = string(url)
-		resp := c.ReturnURL + "/" + id
+		c.Storage.Set(id, string(url))
+		resp := c.BaseURL + "/" + id
 		w.Header().Set("content-type", "application/text")
 		w.WriteHeader(http.StatusCreated) // устанавливаем код 201
 		_, _ = w.Write([]byte(resp))
@@ -36,7 +35,7 @@ func storeURL(c *config.Config) http.HandlerFunc {
 func getURL(c *config.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "id")
-		url := storage.Storage[id]
+		url := c.Storage.Get(id)
 		w.Header().Set("Location", url)
 		w.WriteHeader(http.StatusTemporaryRedirect) // устанавливаем код 307
 		_, _ = w.Write([]byte(""))
