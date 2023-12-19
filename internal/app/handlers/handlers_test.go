@@ -6,10 +6,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/AlexTerra21/shortener/internal/app/config"
-	"github.com/AlexTerra21/shortener/internal/app/utils"
 	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/AlexTerra21/shortener/internal/app/config"
+	"github.com/AlexTerra21/shortener/internal/app/utils"
 )
 
 func TestHandlers_storeURL_getURL(t *testing.T) {

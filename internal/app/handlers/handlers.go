@@ -4,9 +4,10 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/go-chi/chi"
+
 	"github.com/AlexTerra21/shortener/internal/app/config"
 	"github.com/AlexTerra21/shortener/internal/app/utils"
-	"github.com/go-chi/chi"
 )
 
 func MainRouter(c *config.Config) chi.Router {
@@ -26,7 +27,7 @@ func storeURL(c *config.Config) http.HandlerFunc {
 		url, _ := io.ReadAll(r.Body)
 		id := utils.RandSeq(8)
 		c.Storage.Set(id, string(url))
-		resp := c.BaseURL + "/" + id
+		resp := c.GetBaseURL() + "/" + id
 		w.Header().Set("content-type", "application/text")
 		w.WriteHeader(http.StatusCreated) // устанавливаем код 201
 		_, _ = w.Write([]byte(resp))
@@ -35,7 +36,11 @@ func storeURL(c *config.Config) http.HandlerFunc {
 func getURL(c *config.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "id")
-		url := c.Storage.Get(id)
+		url, err := c.Storage.Get(id)
+		if err != nil {
+			http.Error(w, "URL not found", http.StatusNotFound)
+			return
+		}
 		w.Header().Set("Location", url)
 		w.WriteHeader(http.StatusTemporaryRedirect) // устанавливаем код 307
 		_, _ = w.Write([]byte(""))
