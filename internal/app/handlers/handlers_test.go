@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"bytes"
+	"compress/gzip"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -8,6 +10,7 @@ import (
 
 	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/AlexTerra21/shortener/internal/app/config"
 	"github.com/AlexTerra21/shortener/internal/app/utils"
@@ -129,6 +132,68 @@ func TestHandlers_shortenURL(t *testing.T) {
 			resp, err := req.Send()
 			assert.NoError(t, err, "error making HTTP request")
 			assert.Equal(t, tt.code, resp.StatusCode(), "Response code didn't match expected")
+		})
+	}
+}
+
+func TestHandlers_compression(t *testing.T) {
+	utils.RandInit()
+	config := config.NewConfig()
+	config.SetServerAddress(":8080")
+	config.SetBaseURL("http://localhost:8080")
+	// запускаем тестовый сервер, будет выбран первый свободный порт
+	srv := httptest.NewServer(MainRouter(config))
+	// останавливаем сервер после завершения теста
+	defer srv.Close()
+	tests := []struct {
+		name            string
+		method          string
+		uri             string
+		code            int
+		body            string
+		contentType     string
+		contentEncoding string
+	}{
+		{
+			name:            "sends gzip and receive no encoded",
+			method:          http.MethodPost,
+			uri:             "",
+			body:            "https://practicum.yandex.ru/",
+			code:            http.StatusCreated,
+			contentType:     "application/text",
+			contentEncoding: "",
+		},
+		{
+			name:            "sends gzip and receive encoded",
+			method:          http.MethodPost,
+			uri:             "/api/shorten",
+			body:            `{"url": "https://practicum.yandex.ru/"}`,
+			code:            http.StatusCreated,
+			contentType:     "application/json",
+			contentEncoding: "gzip",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			buf := bytes.NewBuffer(nil)
+			zb := gzip.NewWriter(buf)
+			_, err := zb.Write([]byte(tt.body))
+			require.NoError(t, err)
+			err = zb.Close()
+			require.NoError(t, err)
+
+			req := resty.New().R()
+			req.Method = tt.method
+			req.URL = srv.URL + tt.uri
+			req.SetHeader("Accept-Encoding", "gzip")
+			req.SetHeader("Content-Encoding", "gzip")
+			req.SetBody(buf)
+			resp, err := req.Send()
+
+			assert.NoError(t, err, "error making HTTP request")
+			assert.Equal(t, tt.code, resp.StatusCode(), "Response code didn't match expected")
+			assert.Equal(t, tt.contentType, resp.Header().Get("Content-Type"))
+			assert.Equal(t, tt.contentEncoding, resp.Header().Get("Content-Encoding"))
 		})
 	}
 }

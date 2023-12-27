@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi"
 	"go.uber.org/zap"
 
+	"github.com/AlexTerra21/shortener/internal/app/compress"
 	"github.com/AlexTerra21/shortener/internal/app/config"
 	"github.com/AlexTerra21/shortener/internal/app/logger"
 	"github.com/AlexTerra21/shortener/internal/app/models"
@@ -16,9 +17,9 @@ import (
 
 func MainRouter(c *config.Config) chi.Router {
 	r := chi.NewRouter()
-	r.Post("/", logger.WithLogging(storeURL(c)))
-	r.Post("/api/shorten", logger.WithLogging(shortenURL(c)))
-	r.Get("/{id}", logger.WithLogging(getURL(c)))
+	r.Post("/", logger.WithLogging(compress.WithCompress(storeURL(c))))
+	r.Post("/api/shorten", logger.WithLogging(compress.WithCompress(shortenURL(c))))
+	r.Get("/{id}", logger.WithLogging(compress.WithCompress(getURL(c))))
 	r.MethodNotAllowed(notAllowedHandler)
 	return r
 }
