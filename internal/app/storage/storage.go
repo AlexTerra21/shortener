@@ -34,14 +34,14 @@ func (s *Storage) Close() {
 }
 
 func (s *Storage) Set(index string, value string) {
-	new_url := shortenedURL{
+	newURL := shortenedURL{
 		UUID:        uuid.New().String(),
 		ShortURL:    index,
 		OriginalURL: value,
 	}
-	logger.Log().Debug("Storage_Set", zap.Any("new_url", new_url))
-	s.data = append(s.data, new_url)
-	err := s.writeValueToFile(new_url)
+	logger.Log().Debug("Storage_Set", zap.Any("new_url", newURL))
+	s.data = append(s.data, newURL)
+	err := s.writeValueToFile(newURL)
 	if err != nil {
 		logger.Log().Error("Error write URL to file", zap.Error(err))
 	}
