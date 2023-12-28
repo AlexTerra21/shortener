@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/AlexTerra21/shortener/internal/app/config"
+	"github.com/AlexTerra21/shortener/internal/app/storage"
 	"github.com/AlexTerra21/shortener/internal/app/utils"
 )
 
@@ -20,6 +21,7 @@ func TestHandlers_storeURL_getURL(t *testing.T) {
 	// Инициализация сервисов
 	utils.RandInit()
 	config := config.NewConfig()
+	config.Storage = storage.NewStorage("")
 	config.SetServerAddress(":8080")
 	config.SetBaseURL("http://localhost:8080")
 	// запускаем тестовый сервер, будет выбран первый свободный порт
@@ -62,6 +64,7 @@ func TestHandlers_MainHandler(t *testing.T) {
 	config := config.NewConfig()
 	config.SetServerAddress(":8080")
 	config.SetBaseURL("http://localhost:8080")
+	config.Storage = storage.NewStorage("")
 	// запускаем тестовый сервер, будет выбран первый свободный порт
 	srv := httptest.NewServer(MainRouter(config))
 	// останавливаем сервер после завершения теста
@@ -97,6 +100,7 @@ func TestHandlers_shortenURL(t *testing.T) {
 	config := config.NewConfig()
 	config.SetServerAddress(":8080")
 	config.SetBaseURL("http://localhost:8080")
+	config.Storage = storage.NewStorage("")
 	// запускаем тестовый сервер, будет выбран первый свободный порт
 	srv := httptest.NewServer(MainRouter(config))
 	// останавливаем сервер после завершения теста
@@ -141,6 +145,7 @@ func TestHandlers_compression(t *testing.T) {
 	config := config.NewConfig()
 	config.SetServerAddress(":8080")
 	config.SetBaseURL("http://localhost:8080")
+	config.Storage = storage.NewStorage("")
 	// запускаем тестовый сервер, будет выбран первый свободный порт
 	srv := httptest.NewServer(MainRouter(config))
 	// останавливаем сервер после завершения теста

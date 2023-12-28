@@ -9,18 +9,19 @@ import (
 )
 
 type Config struct {
-	serverAddress string
-	baseURL       string
-	logLevel      string
-	Storage       storage.Storage
+	serverAddress   string
+	baseURL         string
+	logLevel        string
+	fileStoragePath string
+	Storage         *storage.Storage
 }
 
 func NewConfig() *Config {
-	return &Config{
-		serverAddress: "",
-		baseURL:       "",
-		Storage:       *storage.NewStorage(),
-	}
+	return &Config{}
+}
+
+func (c *Config) GetFileStoragePath() string {
+	return c.fileStoragePath
 }
 
 func (c *Config) SetServerAddress(s string) {
@@ -53,6 +54,7 @@ func (c *Config) ParseFlags() {
 	serverAddress := flag.String("a", ":8080", "address and port to run server")
 	baseURL := flag.String("b", "http://localhost:8080", "address and port to return")
 	logLevel := flag.String("l", "info", "log level")
+	fileStoragePath := flag.String("f", "/tmp/short-url-db.json", "file name for url save")
 
 	flag.Parse()
 	if serverAddressEnv := os.Getenv("SERVER_ADDRESS"); serverAddressEnv != "" {
@@ -64,7 +66,11 @@ func (c *Config) ParseFlags() {
 	if logLevelEnv := os.Getenv("LOG_LEVEL"); logLevelEnv != "" {
 		logLevel = &logLevelEnv
 	}
+	if fileStoragePathEnv := os.Getenv("FILE_STORAGE_PATH"); fileStoragePathEnv != "" {
+		fileStoragePath = &fileStoragePathEnv
+	}
 	c.serverAddress = *serverAddress
 	c.baseURL = *baseURL
 	c.logLevel = *logLevel
+	c.fileStoragePath = *fileStoragePath
 }
