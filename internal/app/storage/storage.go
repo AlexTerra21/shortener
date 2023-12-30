@@ -26,7 +26,7 @@ type Storage struct {
 
 func NewStorage(fname string) *Storage {
 	stor := Storage{fname: fname}
-	if fname == "" { // Отключение чтения из файла
+	if fname != "" { // Отключение чтения из файла
 		_ = stor.readFromFile()
 	}
 	return &stor
@@ -43,7 +43,7 @@ func (s *Storage) Set(index string, value string) {
 	}
 	logger.Log().Debug("Storage_Set", zap.Any("new_url", newURL))
 	s.data = append(s.data, newURL)
-	if s.fname == "" { // Отключение записи в файл
+	if s.fname != "" { // Отключение записи в файл
 		err := s.writeValueToFile(newURL)
 		if err != nil {
 			logger.Log().Error("Error write URL to file", zap.Error(err))
