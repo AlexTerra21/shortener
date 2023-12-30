@@ -26,7 +26,9 @@ type Storage struct {
 
 func NewStorage(fname string) *Storage {
 	stor := Storage{fname: fname}
-	_ = stor.readFromFile()
+	if fname == "" { // Отключение чтения из файла
+		_ = stor.readFromFile()
+	}
 	return &stor
 }
 
@@ -41,26 +43,24 @@ func (s *Storage) Set(index string, value string) {
 	}
 	logger.Log().Debug("Storage_Set", zap.Any("new_url", newURL))
 	s.data = append(s.data, newURL)
-	err := s.writeValueToFile(newURL)
-	if err != nil {
-		logger.Log().Error("Error write URL to file", zap.Error(err))
+	if s.fname == "" { // Отключение записи в файл
+		err := s.writeValueToFile(newURL)
+		if err != nil {
+			logger.Log().Error("Error write URL to file", zap.Error(err))
+		}
 	}
 }
 
 func (s *Storage) Get(url string) (string, error) {
 	idx := slices.IndexFunc(s.data, func(c shortenedURL) bool { return c.ShortURL == url })
 	if idx == -1 {
-		return "", errors.New("")
+		return "", errors.New("URL not found")
 	}
 
 	return s.data[idx].OriginalURL, nil
 }
 
 func (s *Storage) readFromFile() error {
-	if s.fname == "" {
-		return nil
-	}
-
 	file, err := os.OpenFile(s.fname, os.O_RDONLY|os.O_CREATE, 0666)
 	if err != nil {
 		logger.Log().Error("Error open file", zap.Error(err))
@@ -82,9 +82,6 @@ func (s *Storage) readFromFile() error {
 }
 
 func (s *Storage) writeValueToFile(value shortenedURL) error {
-	if s.fname == "" {
-		return nil
-	}
 	file, err := os.OpenFile(s.fname, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		logger.Log().Error("Error create file", zap.Error(err))
