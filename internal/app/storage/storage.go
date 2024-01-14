@@ -1,25 +1,102 @@
 package storage
 
-import "errors"
+import (
+	"bufio"
+	"encoding/json"
+	"errors"
+	"os"
+	"slices"
 
-type Storage struct {
-	data map[string]string
+	"github.com/google/uuid"
+	"go.uber.org/zap"
+
+	"github.com/AlexTerra21/shortener/internal/app/logger"
+)
+
+type shortenedURL struct {
+	UUID        string `json:"uuid"`
+	ShortURL    string `json:"short_url"`
+	OriginalURL string `json:"original_url"`
 }
 
-func NewStorage() *Storage {
-	return &Storage{
-		data: make(map[string]string),
+type Storage struct {
+	fname string
+	data  []shortenedURL
+}
+
+func NewStorage(fname string) *Storage {
+	stor := Storage{fname: fname}
+	if fname != "" { // Отключение чтения из файла
+		_ = stor.readFromFile()
 	}
+	return &stor
+}
+
+func (s *Storage) Close() {
 }
 
 func (s *Storage) Set(index string, value string) {
-	s.data[index] = value
+	newURL := shortenedURL{
+		UUID:        uuid.New().String(),
+		ShortURL:    index,
+		OriginalURL: value,
+	}
+	logger.Log().Debug("Storage_Set", zap.Any("new_url", newURL))
+	s.data = append(s.data, newURL)
+	if s.fname != "" { // Отключение записи в файл
+		err := s.writeValueToFile(newURL)
+		if err != nil {
+			logger.Log().Error("Error write URL to file", zap.Error(err))
+		}
+	}
 }
 
-func (s *Storage) Get(index string) (string, error) {
-	val, ok := s.data[index]
-	if !ok {
-		return "", errors.New("")
+func (s *Storage) Get(url string) (string, error) {
+	idx := slices.IndexFunc(s.data, func(c shortenedURL) bool { return c.ShortURL == url })
+	if idx == -1 {
+		return "", errors.New("URL not found")
 	}
-	return val, nil
+
+	return s.data[idx].OriginalURL, nil
+}
+
+func (s *Storage) readFromFile() error {
+	file, err := os.OpenFile(s.fname, os.O_RDONLY|os.O_CREATE, 0666)
+	if err != nil {
+		logger.Log().Error("Error open file", zap.Error(err))
+		return err
+	}
+	defer file.Close()
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		val := shortenedURL{}
+		if err := json.Unmarshal(scanner.Bytes(), &val); err != nil {
+			logger.Log().Error("Error unmarshal string to json", zap.Error(err))
+			return err
+		}
+		s.data = append(s.data, val)
+		logger.Log().Debug("readFromFile", zap.Any("Value", val))
+	}
+	logger.Log().Sugar().Infof("Shorten URL data restored from %v", s.fname)
+	return nil
+}
+
+func (s *Storage) writeValueToFile(value shortenedURL) error {
+	file, err := os.OpenFile(s.fname, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		logger.Log().Error("Error create file", zap.Error(err))
+		return err
+	}
+	defer file.Close()
+
+	valByte, err := json.Marshal(&value)
+	if err != nil {
+		logger.Log().Error("Error marshal json to string", zap.Error(err))
+		return err
+	}
+	valByte = append(valByte, '\n')
+
+	_, err = file.Write(valByte)
+	return err
+
 }
