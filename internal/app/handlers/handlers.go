@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi"
 	"go.uber.org/zap"
@@ -20,6 +22,7 @@ func MainRouter(c *config.Config) chi.Router {
 	r.Post("/", logger.WithLogging(compress.WithCompress(storeURL(c))))
 	r.Post("/api/shorten", logger.WithLogging(compress.WithCompress(shortenURL(c))))
 	r.Get("/{id}", logger.WithLogging(compress.WithCompress(getURL(c))))
+	r.Get("/ping", logger.WithLogging(ping(c)))
 	r.MethodNotAllowed(notAllowedHandler)
 	return r
 }
@@ -76,5 +79,18 @@ func getURL(c *config.Config) http.HandlerFunc {
 		w.Header().Set("Location", url)
 		w.WriteHeader(http.StatusTemporaryRedirect) // устанавливаем код 307
 		_, _ = w.Write([]byte(""))
+	}
+}
+
+func ping(c *config.Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
+		if err := c.Storage.DB.PingContext(ctx); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(err.Error()))
+		} else {
+			w.WriteHeader(http.StatusOK)
+		}
 	}
 }

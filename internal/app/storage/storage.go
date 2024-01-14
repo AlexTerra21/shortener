@@ -2,12 +2,14 @@ package storage
 
 import (
 	"bufio"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"os"
 	"slices"
 
 	"github.com/google/uuid"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"go.uber.org/zap"
 
 	"github.com/AlexTerra21/shortener/internal/app/logger"
@@ -22,17 +24,24 @@ type shortenedURL struct {
 type Storage struct {
 	fname string
 	data  []shortenedURL
+	DB    *sql.DB
 }
 
-func NewStorage(fname string) *Storage {
-	stor := Storage{fname: fname}
+func NewStorage(fname string, dbstr string) (*Storage, error) {
+
+	db, err := sql.Open("pgx", dbstr)
+	if err != nil {
+		return nil, errors.New("error open database")
+	}
+	stor := Storage{fname: fname, DB: db}
 	if fname != "" { // Отключение чтения из файла
 		_ = stor.readFromFile()
 	}
-	return &stor
+	return &stor, nil
 }
 
 func (s *Storage) Close() {
+	s.DB.Close()
 }
 
 func (s *Storage) Set(index string, value string) {

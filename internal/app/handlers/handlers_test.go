@@ -21,7 +21,7 @@ func TestHandlers_storeURL_getURL(t *testing.T) {
 	// Инициализация сервисов
 	utils.RandInit()
 	config := config.NewConfig()
-	config.Storage = storage.NewStorage("")
+	config.Storage, _ = storage.NewStorage("", "")
 	config.SetServerAddress(":8080")
 	config.SetBaseURL("http://localhost:8080")
 	// запускаем тестовый сервер, будет выбран первый свободный порт
@@ -64,7 +64,7 @@ func TestHandlers_MainHandler(t *testing.T) {
 	config := config.NewConfig()
 	config.SetServerAddress(":8080")
 	config.SetBaseURL("http://localhost:8080")
-	config.Storage = storage.NewStorage("")
+	config.Storage, _ = storage.NewStorage("", "")
 	// запускаем тестовый сервер, будет выбран первый свободный порт
 	srv := httptest.NewServer(MainRouter(config))
 	// останавливаем сервер после завершения теста
@@ -100,7 +100,7 @@ func TestHandlers_shortenURL(t *testing.T) {
 	config := config.NewConfig()
 	config.SetServerAddress(":8080")
 	config.SetBaseURL("http://localhost:8080")
-	config.Storage = storage.NewStorage("")
+	config.Storage, _ = storage.NewStorage("", "")
 	// запускаем тестовый сервер, будет выбран первый свободный порт
 	srv := httptest.NewServer(MainRouter(config))
 	// останавливаем сервер после завершения теста
@@ -145,7 +145,7 @@ func TestHandlers_compression(t *testing.T) {
 	config := config.NewConfig()
 	config.SetServerAddress(":8080")
 	config.SetBaseURL("http://localhost:8080")
-	config.Storage = storage.NewStorage("")
+	config.Storage, _ = storage.NewStorage("", "")
 	// запускаем тестовый сервер, будет выбран первый свободный порт
 	srv := httptest.NewServer(MainRouter(config))
 	// останавливаем сервер после завершения теста

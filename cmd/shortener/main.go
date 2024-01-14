@@ -12,13 +12,13 @@ import (
 	"github.com/AlexTerra21/shortener/internal/app/config"
 	"github.com/AlexTerra21/shortener/internal/app/handlers"
 	"github.com/AlexTerra21/shortener/internal/app/logger"
-	"github.com/AlexTerra21/shortener/internal/app/storage"
 	"github.com/AlexTerra21/shortener/internal/app/utils"
 )
 
 // ./cmd/shortener/shortener.exe --help
 // ./cmd/shortener/shortener.exe -a=:8091 -b=http://localhost:8085 -l debug
 // ./cmd/shortener/shortener.exe -a=:8091 -b=http://localhost:8091 -l debug -f ./tmp/short-url-db.json
+// ./cmd/shortener/shortener.exe -a=:8091 -b=http://localhost:8091 -l debug -d "host=localhost user=shortner password=userpassword dbname=short_urls sslmode=disable"
 // функция main вызывается автоматически при запуске приложения
 func main() {
 	if err := run(); err != nil {
@@ -27,17 +27,20 @@ func main() {
 }
 
 // функция run будет полезна при инициализации зависимостей сервера перед запуском
-func run() error {
+func run() (err error) {
 	config := config.NewConfig()
 	config.ParseFlags()
 	config.Print()
-	if err := logger.Initialize(config.GetLogLevel()); err != nil {
+	if err = logger.Initialize(config.GetLogLevel()); err != nil {
 		return err
 	}
-	config.Storage = storage.NewStorage(config.GetFileStoragePath())
+	err = config.InitStorage()
+	if err != nil {
+		return err
+	}
 	defer config.Storage.Close()
 
-	if err := logger.Initialize(config.GetLogLevel()); err != nil {
+	if err = logger.Initialize(config.GetLogLevel()); err != nil {
 		return err
 	}
 	utils.RandInit()
