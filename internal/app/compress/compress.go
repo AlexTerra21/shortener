@@ -104,7 +104,6 @@ func WithCompress(h http.Handler) http.HandlerFunc {
 
 		contentEncoding := r.Header.Get("Content-Encoding")
 		sendsGzip := strings.Contains(contentEncoding, "gzip")
-		fmt.Println(sendsGzip)
 		if sendsGzip {
 			cr, err := newCompressReader(r.Body)
 			if err != nil {

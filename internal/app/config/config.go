@@ -61,8 +61,8 @@ func (c *Config) ParseFlags() {
 	serverAddress := flag.String("a", ":8080", "address and port to run server")
 	baseURL := flag.String("b", "http://localhost:8080", "address and port to return")
 	logLevel := flag.String("l", "info", "log level")
-	fileStoragePath := flag.String("f", "/tmp/short-url-db.json", "file name for url save")
-	dbConnectString := flag.String("d", "host=<host> user=<user> password=<password> dbname=<dbname> sslmode=<sslmode>", "db connection string")
+	fileStoragePath := flag.String("f", "", "file name for url save")
+	dbConnectString := flag.String("d", "", "db connection string")
 
 	flag.Parse()
 	if serverAddressEnv := os.Getenv("SERVER_ADDRESS"); serverAddressEnv != "" {

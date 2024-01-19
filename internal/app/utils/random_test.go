@@ -7,7 +7,6 @@ import (
 )
 
 func TestRandom_RandSeq(t *testing.T) {
-	RandInit()
 	randomStrings := make(map[string]int)
 
 	charLimit := 8

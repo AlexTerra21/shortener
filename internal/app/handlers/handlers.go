@@ -1,11 +1,9 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"io"
 	"net/http"
-	"time"
 
 	"github.com/go-chi/chi"
 	"go.uber.org/zap"
@@ -14,6 +12,7 @@ import (
 	"github.com/AlexTerra21/shortener/internal/app/config"
 	"github.com/AlexTerra21/shortener/internal/app/logger"
 	"github.com/AlexTerra21/shortener/internal/app/models"
+	"github.com/AlexTerra21/shortener/internal/app/storage/storagers"
 	"github.com/AlexTerra21/shortener/internal/app/utils"
 )
 
@@ -21,7 +20,7 @@ func MainRouter(c *config.Config) chi.Router {
 	r := chi.NewRouter()
 	r.Post("/", logger.WithLogging(compress.WithCompress(storeURL(c))))
 	r.Post("/api/shorten", logger.WithLogging(compress.WithCompress(shortenURL(c))))
-	r.Get("/{id}", logger.WithLogging(compress.WithCompress(getURL(c))))
+	r.Get("/{id}", logger.WithLogging(getURL(c)))
 	r.Get("/ping", logger.WithLogging(ping(c)))
 	r.MethodNotAllowed(notAllowedHandler)
 	return r
@@ -78,15 +77,18 @@ func getURL(c *config.Config) http.HandlerFunc {
 		}
 		w.Header().Set("Location", url)
 		w.WriteHeader(http.StatusTemporaryRedirect) // устанавливаем код 307
-		_, _ = w.Write([]byte(""))
 	}
 }
 
 func ping(c *config.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-		defer cancel()
-		if err := c.Storage.DB.PingContext(ctx); err != nil {
+		db, ok := c.Storage.S.(*storagers.DB)
+		if !ok {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte("Database not supported"))
+			return
+		}
+		if err := db.Ping(r.Context()); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			_, _ = w.Write([]byte(err.Error()))
 		} else {

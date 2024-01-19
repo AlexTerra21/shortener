@@ -12,11 +12,10 @@ import (
 	"github.com/AlexTerra21/shortener/internal/app/config"
 	"github.com/AlexTerra21/shortener/internal/app/handlers"
 	"github.com/AlexTerra21/shortener/internal/app/logger"
-	"github.com/AlexTerra21/shortener/internal/app/utils"
 )
 
 // ./cmd/shortener/shortener.exe --help
-// ./cmd/shortener/shortener.exe -a=:8091 -b=http://localhost:8085 -l debug
+// ./cmd/shortener/shortener.exe -a=:8091 -b=http://localhost:8091 -l debug
 // ./cmd/shortener/shortener.exe -a=:8091 -b=http://localhost:8091 -l debug -f ./tmp/short-url-db.json
 // ./cmd/shortener/shortener.exe -a=:8091 -b=http://localhost:8091 -l debug -d "host=localhost user=shortner password=userpassword dbname=short_urls sslmode=disable"
 // функция main вызывается автоматически при запуске приложения
@@ -34,16 +33,10 @@ func run() (err error) {
 	if err = logger.Initialize(config.GetLogLevel()); err != nil {
 		return err
 	}
-	err = config.InitStorage()
-	if err != nil {
+	if err = config.InitStorage(); err != nil {
 		return err
 	}
 	defer config.Storage.Close()
-
-	if err = logger.Initialize(config.GetLogLevel()); err != nil {
-		return err
-	}
-	utils.RandInit()
 
 	signalCh := make(chan os.Signal, 1)
 	signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM)

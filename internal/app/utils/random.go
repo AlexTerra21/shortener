@@ -5,16 +5,11 @@ import (
 	"time"
 )
 
-// Переменная для хранения генератора случайных чисел
-var rng *rand.Rand
-
-// Инициализация генератора случайных чисел
-func RandInit() {
-	source := rand.NewSource(time.Now().UnixNano())
-	rng = rand.New(source)
-}
-
-var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+var (
+	// Переменная для хранения генератора случайных чисел
+	rng     = rand.New(rand.NewSource(time.Now().UnixNano()))
+	letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+)
 
 // Генерирует строку из случайных символов латиницы
 func RandSeq(n int) string {

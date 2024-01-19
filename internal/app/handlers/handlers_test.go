@@ -14,12 +14,10 @@ import (
 
 	"github.com/AlexTerra21/shortener/internal/app/config"
 	"github.com/AlexTerra21/shortener/internal/app/storage"
-	"github.com/AlexTerra21/shortener/internal/app/utils"
 )
 
 func TestHandlers_storeURL_getURL(t *testing.T) {
 	// Инициализация сервисов
-	utils.RandInit()
 	config := config.NewConfig()
 	config.Storage, _ = storage.NewStorage("", "")
 	config.SetServerAddress(":8080")
@@ -96,7 +94,6 @@ func TestHandlers_MainHandler(t *testing.T) {
 }
 
 func TestHandlers_shortenURL(t *testing.T) {
-	utils.RandInit()
 	config := config.NewConfig()
 	config.SetServerAddress(":8080")
 	config.SetBaseURL("http://localhost:8080")
@@ -141,7 +138,6 @@ func TestHandlers_shortenURL(t *testing.T) {
 }
 
 func TestHandlers_compression(t *testing.T) {
-	utils.RandInit()
 	config := config.NewConfig()
 	config.SetServerAddress(":8080")
 	config.SetBaseURL("http://localhost:8080")
