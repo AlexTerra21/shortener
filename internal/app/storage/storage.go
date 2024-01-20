@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"context"
+
 	"github.com/AlexTerra21/shortener/internal/app/logger"
 	"github.com/AlexTerra21/shortener/internal/app/storage/storagers"
 )
@@ -38,11 +40,12 @@ func (stor *Storage) Close() {
 	stor.S.Close()
 }
 
-func (stor *Storage) Set(index string, value string) {
-	stor.S.Set(index, value)
+func (stor *Storage) Set(ctx context.Context, index string, value string) error {
+	err := stor.S.Set(ctx, index, value)
+	return err
 }
 
-func (stor *Storage) Get(url string) (string, error) {
-	data, err := stor.S.Get(url)
+func (stor *Storage) Get(ctx context.Context, url string) (string, error) {
+	data, err := stor.S.Get(ctx, url)
 	return data, err
 }

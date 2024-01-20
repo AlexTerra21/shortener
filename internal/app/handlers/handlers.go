@@ -37,11 +37,18 @@ func shortenURL(c *config.Config) http.HandlerFunc {
 		decoder := json.NewDecoder(r.Body)
 		if err := decoder.Decode(&request); err != nil {
 			logger.Log().Debug("cannot decode request JSON body", zap.Error(err))
+			w.Header().Set("content-type", "application/text")
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		id := utils.RandSeq(8)
-		c.Storage.Set(id, request.URL)
+		if err := c.Storage.Set(r.Context(), id, request.URL); err != nil {
+			logger.Log().Debug("Error adding new url", zap.Error(err))
+			w.Header().Set("content-type", "application/text")
+			w.WriteHeader(http.StatusConflict)
+			_, _ = w.Write([]byte(err.Error()))
+			return
+		}
 		response := models.Response{
 			Result: c.GetBaseURL() + "/" + id,
 		}
@@ -59,7 +66,12 @@ func storeURL(c *config.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		url, _ := io.ReadAll(r.Body)
 		id := utils.RandSeq(8)
-		c.Storage.Set(id, string(url))
+		if err := c.Storage.Set(r.Context(), id, string(url)); err != nil {
+			logger.Log().Debug("Error adding new url", zap.Error(err))
+			w.Header().Set("content-type", "application/text")
+			w.WriteHeader(http.StatusConflict)
+			return
+		}
 		resp := c.GetBaseURL() + "/" + id
 		w.Header().Set("content-type", "application/text")
 		w.WriteHeader(http.StatusCreated) // устанавливаем код 201
@@ -69,7 +81,7 @@ func storeURL(c *config.Config) http.HandlerFunc {
 func getURL(c *config.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "id")
-		url, err := c.Storage.Get(id)
+		url, err := c.Storage.Get(r.Context(), id)
 		if err != nil {
 			logger.Log().Error("URL not found", zap.Int("status", http.StatusNotFound), zap.String("id", id))
 			http.Error(w, "URL not found", http.StatusNotFound)

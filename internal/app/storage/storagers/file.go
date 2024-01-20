@@ -2,6 +2,7 @@ package storagers
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"errors"
 	"os"
@@ -30,7 +31,7 @@ func (f *File) New(fName string) error {
 func (f *File) Close() {
 }
 
-func (f *File) Set(index string, value string) {
+func (f *File) Set(_ context.Context, index string, value string) error {
 	newURL := ShortenedURL{
 		UUID:        uuid.New().String(),
 		ShortURL:    index,
@@ -40,10 +41,13 @@ func (f *File) Set(index string, value string) {
 	err := f.writeValueToFile(newURL)
 	if err != nil {
 		logger.Log().Error("Error write URL to file", zap.Error(err))
+		return err
 	}
+	logger.Log().Debug("Storage_Set_File", zap.Any("new_url", newURL))
+	return nil
 }
 
-func (f *File) Get(url string) (string, error) {
+func (f *File) Get(_ context.Context, url string) (string, error) {
 	idx := slices.IndexFunc(f.data, func(c ShortenedURL) bool { return c.ShortURL == url })
 	if idx == -1 {
 		return "", errors.New("URL not found")

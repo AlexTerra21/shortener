@@ -1,10 +1,12 @@
 package storage
 
+import "context"
+
 type Storager interface {
 	New(string) error
 	Close()
-	Set(string, string)
-	Get(string) (string, error)
+	Set(context.Context, string, string) error
+	Get(context.Context, string) (string, error)
 }
 
 type Storage struct {
