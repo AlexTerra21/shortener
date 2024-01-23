@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/AlexTerra21/shortener/internal/app/logger"
+	"github.com/AlexTerra21/shortener/internal/app/models"
 	"github.com/AlexTerra21/shortener/internal/app/storage/storagers"
 )
 
@@ -45,7 +46,15 @@ func (stor *Storage) Set(ctx context.Context, index string, value string) error 
 	return err
 }
 
-func (stor *Storage) Get(ctx context.Context, url string) (string, error) {
-	data, err := stor.S.Get(ctx, url)
-	return data, err
+func (stor *Storage) BatchSet(ctx context.Context, data *[]models.BatchStore) error {
+	err := stor.S.BatchSet(ctx, data)
+	return err
+}
+
+func (stor *Storage) Get(ctx context.Context, idxURL string) (originalURL string, err error) {
+	originalURL, err = stor.S.Get(ctx, idxURL)
+	if err == nil {
+		logger.Log().Sugar().Debugf("Founded URL %s", originalURL)
+	}
+	return
 }

@@ -20,6 +20,7 @@ func MainRouter(c *config.Config) chi.Router {
 	r := chi.NewRouter()
 	r.Post("/", logger.WithLogging(compress.WithCompress(storeURL(c))))
 	r.Post("/api/shorten", logger.WithLogging(compress.WithCompress(shortenURL(c))))
+	r.Post("/api/shorten/batch", logger.WithLogging(compress.WithCompress(batch(c))))
 	r.Get("/{id}", logger.WithLogging(getURL(c)))
 	r.Get("/ping", logger.WithLogging(ping(c)))
 	r.MethodNotAllowed(notAllowedHandler)
@@ -105,6 +106,54 @@ func ping(c *config.Config) http.HandlerFunc {
 			_, _ = w.Write([]byte(err.Error()))
 		} else {
 			w.WriteHeader(http.StatusOK)
+		}
+	}
+}
+
+func batch(c *config.Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		logger.Log().Debug("decoding request")
+		var request []models.BatchReq
+		decoder := json.NewDecoder(r.Body)
+		if err := decoder.Decode(&request); err != nil {
+			logger.Log().Debug("cannot decode request JSON body", zap.Error(err))
+			w.Header().Set("content-type", "application/text")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		response := make([]models.BatchResp, 0)
+		batchStor := make([]models.BatchStore, 0)
+		for _, value := range request {
+			if value.OriginalURL == "" {
+				continue
+			}
+			id := utils.RandSeq(8)
+			resp := models.BatchResp{
+				CorrelationID: value.CorrelationID,
+				ShortURL:      c.GetBaseURL() + "/" + id,
+			}
+			batch := models.BatchStore{
+				OriginalURL: value.OriginalURL,
+				IdxShortURL: id,
+			}
+			batchStor = append(batchStor, batch)
+			response = append(response, resp)
+		}
+
+		if err := c.Storage.BatchSet(r.Context(), &batchStor); err != nil {
+			logger.Log().Debug("Error adding new url", zap.Error(err))
+			w.Header().Set("content-type", "application/text")
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(err.Error()))
+			return
+		}
+
+		w.Header().Set("content-type", "application/json")
+		w.WriteHeader(http.StatusCreated) // устанавливаем код 201
+		encoder := json.NewEncoder(w)
+		if err := encoder.Encode(response); err != nil {
+			logger.Log().Debug("error encoding response", zap.Error(err))
+			return
 		}
 	}
 }

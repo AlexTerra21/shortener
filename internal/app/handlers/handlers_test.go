@@ -198,3 +198,50 @@ func TestHandlers_compression(t *testing.T) {
 		})
 	}
 }
+
+func Test_batch(t *testing.T) {
+	config := config.NewConfig()
+	config.SetServerAddress(":8080")
+	config.SetBaseURL("http://localhost:8080")
+	config.Storage, _ = storage.NewStorage("", "")
+	// запускаем тестовый сервер, будет выбран первый свободный порт
+	srv := httptest.NewServer(MainRouter(config))
+	// останавливаем сервер после завершения теста
+	defer srv.Close()
+	tests := []struct {
+		name   string
+		method string
+		code   int
+		body   string
+	}{
+		{
+			name:   "check internal server error",
+			method: http.MethodPost,
+			body:   "",
+			code:   http.StatusInternalServerError,
+		},
+		{
+			name:   "check success",
+			method: http.MethodPost,
+			body: `[{
+				"correlation_id": "2",
+				"original_url": "https://practicum.yandex.ru/"
+		    }]`,
+			code: http.StatusCreated,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := resty.New().R()
+			req.Method = tt.method
+			req.URL = srv.URL + "/api/shorten/batch"
+			if len(tt.body) > 0 {
+				req.SetHeader("Content-Type", "application/json")
+				req.SetBody(tt.body)
+			}
+			resp, err := req.Send()
+			assert.NoError(t, err, "error making HTTP request")
+			assert.Equal(t, tt.code, resp.StatusCode(), "Response code didn't match expected")
+		})
+	}
+}

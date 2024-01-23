@@ -11,6 +11,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/AlexTerra21/shortener/internal/app/logger"
+	"github.com/AlexTerra21/shortener/internal/app/models"
 )
 
 type DB struct {
@@ -34,18 +35,40 @@ func (d *DB) Close() {
 func (d *DB) Set(ctx context.Context, index string, value string) error {
 	newURL := ShortenedURL{
 		UUID:        uuid.New().String(),
-		ShortURL:    index,
+		IdxShortURL: index,
 		OriginalURL: value,
 	}
-	if err := d.insertURL(ctx, newURL); err != nil {
+	newURLs := []ShortenedURL{newURL}
+	if err := d.insertURLs(ctx, &newURLs); err != nil {
 		return err
 	}
 	logger.Log().Debug("Storage_Set_DB", zap.Any("new_url", newURL))
 	return nil
 }
 
-func (d *DB) Get(ctx context.Context, url string) (string, error) {
-	return "", nil
+func (d *DB) BatchSet(ctx context.Context, batchValues *[]models.BatchStore) error {
+	newURLs := make([]ShortenedURL, 0)
+	for _, url := range *batchValues {
+		newURL := ShortenedURL{
+			UUID:        uuid.New().String(),
+			IdxShortURL: url.IdxShortURL,
+			OriginalURL: url.OriginalURL,
+		}
+		newURLs = append(newURLs, newURL)
+		logger.Log().Debug("Storage_Set_File", zap.Any("new_url", newURL))
+	}
+	err := d.insertURLs(ctx, &newURLs)
+	if err != nil {
+		logger.Log().Error("Error write URL to file", zap.Error(err))
+		return err
+	}
+	return nil
+}
+
+func (d *DB) Get(ctx context.Context, idxURL string) (original_url string, err error) {
+	row := d.db.QueryRowContext(ctx, `SELECT original_url FROM urls WHERE short_url = $1`, idxURL)
+	err = row.Scan(&original_url)
+	return
 }
 
 func (d *DB) Ping(ctx context.Context) error {
@@ -58,42 +81,66 @@ func (d *DB) Ping(ctx context.Context) error {
 }
 
 func (d *DB) createTable() error {
-	query := "CREATE TABLE IF NOT EXISTS urls" +
-		"(uuid VARCHAR (100) UNIQUE NOT NULL," +
-		"short_url VARCHAR (100) NOT NULL," +
-		"original_url VARCHAR (100) UNIQUE NOT NULL)"
-
+	// запускаем транзакцию
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	_, err := d.db.ExecContext(ctx, query)
+	tx, err := d.db.BeginTx(ctx, nil)
 	if err != nil {
-		logger.Log().Debug("error when creating product table", zap.Error(err))
+		logger.Log().Debug("error when creating transaction", zap.Error(err))
 		return err
 	}
-	return nil
+
+	_, err = tx.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS urls (
+			uuid VARCHAR (100) UNIQUE NOT NULL,
+			short_url VARCHAR (100) UNIQUE NOT NULL,
+			original_url VARCHAR (100) NOT NULL
+		)
+	`)
+
+	if err != nil {
+		logger.Log().Debug("error when creating product table", zap.Error(err))
+		return tx.Rollback()
+	}
+
+	return tx.Commit()
 }
 
-func (d *DB) insertURL(ctx context.Context, url ShortenedURL) error {
-	query := "INSERT INTO urls(uuid, short_url, original_url) VALUES ($1, $2, $3)"
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+func (d *DB) insertURLs(ctx context.Context, urls *[]ShortenedURL) error {
+	tx, err := d.db.Begin()
+	if err != nil {
+		return err
+	}
+	// можно вызвать Rollback в defer,
+	// если Commit будет раньше, то откат проигнорируется
+	defer tx.Rollback()
+	query := `
+		INSERT INTO urls(uuid, short_url, original_url) 
+			VALUES ($1, $2, $3)
+	`
+	ctx_local, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	stmt, err := d.db.PrepareContext(ctx, query)
+	stmt, err := tx.PrepareContext(ctx_local, query)
 	if err != nil {
 		logger.Log().Debug("error when preparing SQL statement", zap.Error(err))
 		return err
 	}
 	defer stmt.Close()
-	res, err := stmt.ExecContext(ctx, url.UUID, url.ShortURL, url.OriginalURL)
-	if err != nil {
-		logger.Log().Debug("error when inserting row into urls table", zap.Error(err))
-		return err
+	var allRows int64
+	for _, url := range *urls {
+		res, err := stmt.ExecContext(ctx_local, url.UUID, url.IdxShortURL, url.OriginalURL)
+		if err != nil {
+			logger.Log().Debug("error when inserting row into urls table", zap.Error(err))
+			return err
+		}
+		rows, err := res.RowsAffected()
+		if err != nil {
+			logger.Log().Debug("error when finding rows affected", zap.Error(err))
+			return err
+		}
+		allRows += rows
 	}
-	rows, err := res.RowsAffected()
-	if err != nil {
-		logger.Log().Debug("error when finding rows affected", zap.Error(err))
-		return err
-	}
-	logger.Log().Debug("Inserted", zap.Int64("Rows", rows))
+	logger.Log().Debug("Inserted", zap.Int64("Rows", allRows))
 
-	return nil
+	return tx.Commit()
 }
