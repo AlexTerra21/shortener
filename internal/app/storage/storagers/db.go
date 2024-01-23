@@ -65,9 +65,9 @@ func (d *DB) BatchSet(ctx context.Context, batchValues *[]models.BatchStore) err
 	return nil
 }
 
-func (d *DB) Get(ctx context.Context, idxURL string) (original_url string, err error) {
+func (d *DB) Get(ctx context.Context, idxURL string) (originalURL string, err error) {
 	row := d.db.QueryRowContext(ctx, `SELECT original_url FROM urls WHERE short_url = $1`, idxURL)
-	err = row.Scan(&original_url)
+	err = row.Scan(&originalURL)
 	return
 }
 
@@ -118,9 +118,9 @@ func (d *DB) insertURLs(ctx context.Context, urls *[]ShortenedURL) error {
 		INSERT INTO urls(uuid, short_url, original_url) 
 			VALUES ($1, $2, $3)
 	`
-	ctx_local, cancel := context.WithTimeout(ctx, 5*time.Second)
+	ctxLocal, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	stmt, err := tx.PrepareContext(ctx_local, query)
+	stmt, err := tx.PrepareContext(ctxLocal, query)
 	if err != nil {
 		logger.Log().Debug("error when preparing SQL statement", zap.Error(err))
 		return err
@@ -128,7 +128,7 @@ func (d *DB) insertURLs(ctx context.Context, urls *[]ShortenedURL) error {
 	defer stmt.Close()
 	var allRows int64
 	for _, url := range *urls {
-		res, err := stmt.ExecContext(ctx_local, url.UUID, url.IdxShortURL, url.OriginalURL)
+		res, err := stmt.ExecContext(ctxLocal, url.UUID, url.IdxShortURL, url.OriginalURL)
 		if err != nil {
 			logger.Log().Debug("error when inserting row into urls table", zap.Error(err))
 			return err
