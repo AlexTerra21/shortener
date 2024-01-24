@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 
@@ -10,6 +11,7 @@ import (
 
 	"github.com/AlexTerra21/shortener/internal/app/compress"
 	"github.com/AlexTerra21/shortener/internal/app/config"
+	"github.com/AlexTerra21/shortener/internal/app/errs"
 	"github.com/AlexTerra21/shortener/internal/app/logger"
 	"github.com/AlexTerra21/shortener/internal/app/models"
 	"github.com/AlexTerra21/shortener/internal/app/storage/storagers"
@@ -43,18 +45,26 @@ func shortenURL(c *config.Config) http.HandlerFunc {
 			return
 		}
 		id := utils.RandSeq(8)
+		var response models.Response
+		w.Header().Set("content-type", "application/json")
 		if err := c.Storage.Set(r.Context(), id, request.URL); err != nil {
 			logger.Log().Debug("Error adding new url", zap.Error(err))
-			w.Header().Set("content-type", "application/text")
-			w.WriteHeader(http.StatusConflict)
-			_, _ = w.Write([]byte(err.Error()))
-			return
+			if errors.Is(err, errs.ErrConflict) {
+				w.WriteHeader(http.StatusConflict)
+				db, ok := c.Storage.S.(*storagers.DB)
+				if ok {
+					id, _ := db.GetShortURL(r.Context(), request.URL)
+					response.Result = c.GetBaseURL() + "/" + id
+				}
+			} else {
+				w.WriteHeader(http.StatusInternalServerError)
+				response.Result = err.Error()
+			}
+		} else {
+			w.WriteHeader(http.StatusCreated) // устанавливаем код 201
+			response.Result = c.GetBaseURL() + "/" + id
 		}
-		response := models.Response{
-			Result: c.GetBaseURL() + "/" + id,
-		}
-		w.Header().Set("content-type", "application/json")
-		w.WriteHeader(http.StatusCreated) // устанавливаем код 201
+
 		encoder := json.NewEncoder(w)
 		if err := encoder.Encode(response); err != nil {
 			logger.Log().Debug("error encoding response", zap.Error(err))
@@ -67,15 +77,25 @@ func storeURL(c *config.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		url, _ := io.ReadAll(r.Body)
 		id := utils.RandSeq(8)
+		var resp string
+		w.Header().Set("content-type", "application/text")
 		if err := c.Storage.Set(r.Context(), id, string(url)); err != nil {
 			logger.Log().Debug("Error adding new url", zap.Error(err))
-			w.Header().Set("content-type", "application/text")
-			w.WriteHeader(http.StatusConflict)
-			return
+			if errors.Is(err, errs.ErrConflict) {
+				w.WriteHeader(http.StatusConflict)
+				db, ok := c.Storage.S.(*storagers.DB)
+				if ok {
+					id, _ := db.GetShortURL(r.Context(), string(url))
+					resp = c.GetBaseURL() + "/" + id
+				}
+			} else {
+				w.WriteHeader(http.StatusInternalServerError)
+				resp = err.Error()
+			}
+		} else {
+			w.WriteHeader(http.StatusCreated) // устанавливаем код 201
+			resp = c.GetBaseURL() + "/" + id
 		}
-		resp := c.GetBaseURL() + "/" + id
-		w.Header().Set("content-type", "application/text")
-		w.WriteHeader(http.StatusCreated) // устанавливаем код 201
 		_, _ = w.Write([]byte(resp))
 	}
 }

@@ -7,9 +7,12 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"go.uber.org/zap"
 
+	"github.com/AlexTerra21/shortener/internal/app/errs"
 	"github.com/AlexTerra21/shortener/internal/app/logger"
 	"github.com/AlexTerra21/shortener/internal/app/models"
 )
@@ -38,8 +41,7 @@ func (d *DB) Set(ctx context.Context, index string, value string) error {
 		IdxShortURL: index,
 		OriginalURL: value,
 	}
-	newURLs := []ShortenedURL{newURL}
-	if err := d.insertURLs(ctx, &newURLs); err != nil {
+	if err := d.insertURL(ctx, newURL); err != nil {
 		return err
 	}
 	logger.Log().Debug("Storage_Set_DB", zap.Any("new_url", newURL))
@@ -71,6 +73,12 @@ func (d *DB) Get(ctx context.Context, idxURL string) (originalURL string, err er
 	return
 }
 
+func (d *DB) GetShortURL(ctx context.Context, originalURL string) (idxURL string, err error) {
+	row := d.db.QueryRowContext(ctx, `SELECT short_url FROM urls WHERE original_url = $1`, originalURL)
+	err = row.Scan(&idxURL)
+	return
+}
+
 func (d *DB) Ping(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
@@ -94,7 +102,7 @@ func (d *DB) createTable() error {
 		CREATE TABLE IF NOT EXISTS urls (
 			uuid VARCHAR (100) UNIQUE NOT NULL,
 			short_url VARCHAR (100) UNIQUE NOT NULL,
-			original_url VARCHAR (100) NOT NULL
+			original_url VARCHAR (100) UNIQUE NOT NULL
 		)
 	`)
 
@@ -102,6 +110,45 @@ func (d *DB) createTable() error {
 		logger.Log().Debug("error when creating product table", zap.Error(err))
 		return tx.Rollback()
 	}
+
+	return tx.Commit()
+}
+
+func (d *DB) insertURL(ctx context.Context, url ShortenedURL) error {
+	tx, err := d.db.Begin()
+	if err != nil {
+		return err
+	}
+	// можно вызвать Rollback в defer,
+	// если Commit будет раньше, то откат проигнорируется
+	defer tx.Rollback()
+
+	query := `INSERT INTO urls(uuid, short_url, original_url) VALUES ($1, $2, $3)`
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	stmt, err := tx.PrepareContext(ctx, query)
+	if err != nil {
+		logger.Log().Debug("error when preparing SQL statement", zap.Error(err))
+		return err
+	}
+	defer stmt.Close()
+
+	res, err := stmt.ExecContext(ctx, url.UUID, url.IdxShortURL, url.OriginalURL)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && (pgerrcode.UniqueViolation == pgErr.Code) {
+			err = errs.ErrConflict
+		}
+		logger.Log().Debug("error when inserting row into urls table", zap.Error(err))
+		return err
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		logger.Log().Debug("error when finding rows affected", zap.Error(err))
+		return err
+	}
+	logger.Log().Debug("Inserted", zap.Int64("Rows", rows))
 
 	return tx.Commit()
 }
