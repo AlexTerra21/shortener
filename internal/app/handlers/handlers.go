@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi"
 	"go.uber.org/zap"
 
+	"github.com/AlexTerra21/shortener/internal/app/auth"
 	"github.com/AlexTerra21/shortener/internal/app/compress"
 	"github.com/AlexTerra21/shortener/internal/app/config"
 	"github.com/AlexTerra21/shortener/internal/app/errs"
@@ -20,7 +21,7 @@ import (
 
 func MainRouter(c *config.Config) chi.Router {
 	r := chi.NewRouter()
-	r.Post("/", logger.WithLogging(compress.WithCompress(storeURL(c))))
+	r.Post("/", auth.WithAuth(logger.WithLogging(compress.WithCompress(storeURL(c)))))
 	r.Post("/api/shorten", logger.WithLogging(compress.WithCompress(shortenURL(c))))
 	r.Post("/api/shorten/batch", logger.WithLogging(compress.WithCompress(batch(c))))
 	r.Get("/api/user/urls", logger.WithLogging(compress.WithCompress(urls(c))))
@@ -181,16 +182,16 @@ func batch(c *config.Config) http.HandlerFunc {
 
 func urls(c *config.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		token, err := r.Cookie("Token")
-		if err == nil {
-			logger.Log().Debug(token.Value)
-		} else {
-			logger.Log().Debug(err.Error())
+		if !auth.CheckAuth(r) {
+			w.Header().Set("content-type", "application/text")
+			w.WriteHeader(http.StatusUnauthorized)
+			_, _ = w.Write([]byte("Unauthorized"))
+			return
 		}
 		db, ok := c.Storage.S.(*storagers.DB)
 		if !ok {
-			w.WriteHeader(http.StatusInternalServerError)
 			w.Header().Set("content-type", "application/text")
+			w.WriteHeader(http.StatusInternalServerError)
 			_, _ = w.Write([]byte("Database not supported"))
 			return
 		}
