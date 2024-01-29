@@ -23,6 +23,7 @@ func MainRouter(c *config.Config) chi.Router {
 	r.Post("/", logger.WithLogging(compress.WithCompress(storeURL(c))))
 	r.Post("/api/shorten", logger.WithLogging(compress.WithCompress(shortenURL(c))))
 	r.Post("/api/shorten/batch", logger.WithLogging(compress.WithCompress(batch(c))))
+	r.Get("/api/user/urls", logger.WithLogging(compress.WithCompress(urls(c))))
 	r.Get("/{id}", logger.WithLogging(getURL(c)))
 	r.Get("/ping", logger.WithLogging(ping(c)))
 	r.MethodNotAllowed(notAllowedHandler)
@@ -175,5 +176,46 @@ func batch(c *config.Config) http.HandlerFunc {
 			logger.Log().Debug("error encoding response", zap.Error(err))
 			return
 		}
+	}
+}
+
+func urls(c *config.Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		token, err := r.Cookie("Token")
+		if err == nil {
+			logger.Log().Debug(token.Value)
+		} else {
+			logger.Log().Debug(err.Error())
+		}
+		db, ok := c.Storage.S.(*storagers.DB)
+		if !ok {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Header().Set("content-type", "application/text")
+			_, _ = w.Write([]byte("Database not supported"))
+			return
+		}
+		response, err := db.GetAll(r.Context(), c.GetBaseURL())
+		if err != nil {
+			logger.Log().Debug("error get all urls from DB", zap.Error(err))
+			w.Header().Set("content-type", "application/text")
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(err.Error()))
+			return
+		}
+		if response == nil {
+			logger.Log().Debug("Empty DB")
+			w.Header().Set("content-type", "application/text")
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		w.Header().Set("content-type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		encoder := json.NewEncoder(w)
+		if err := encoder.Encode(response); err != nil {
+			logger.Log().Debug("error encoding response", zap.Error(err))
+			return
+		}
+
 	}
 }

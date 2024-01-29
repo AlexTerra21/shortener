@@ -19,6 +19,6 @@ type BatchResp struct {
 }
 
 type BatchStore struct {
-	OriginalURL string
-	IdxShortURL string
+	IdxShortURL string `json:"short_url"`
+	OriginalURL string `json:"original_url"`
 }

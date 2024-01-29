@@ -191,3 +191,22 @@ func (d *DB) insertURLs(ctx context.Context, urls *[]ShortenedURL) error {
 
 	return tx.Commit()
 }
+
+func (d *DB) GetAll(ctx context.Context, shortURLPrefix string) (allURLs []models.BatchStore, err error) {
+	rows, err := d.db.QueryContext(ctx, `SELECT short_url, original_url  FROM urls`)
+	if err != nil {
+		return nil, err
+	}
+	// не забываем закрыть курсор после завершения работы с данными
+	defer rows.Close()
+
+	for rows.Next() {
+		var u models.BatchStore
+		if err := rows.Scan(&u.IdxShortURL, &u.OriginalURL); err != nil {
+			return nil, err
+		}
+		u.IdxShortURL = shortURLPrefix + "/" + u.IdxShortURL
+		allURLs = append(allURLs, u)
+	}
+	return
+}
