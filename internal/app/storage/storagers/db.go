@@ -111,12 +111,6 @@ func (d *DB) createTable() error {
 		return tx.Rollback()
 	}
 
-	_, err = tx.ExecContext(ctx, `TRUNCATE TABLE urls`)
-	if err != nil {
-		logger.Log().Debug("error when truncating urls table", zap.Error(err))
-		return tx.Rollback()
-	}
-
 	return tx.Commit()
 }
 
