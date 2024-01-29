@@ -28,7 +28,7 @@ func WithAuth(h http.Handler) http.HandlerFunc {
 			logger.Log().Debug("No Cookies")
 			needAuthString = true
 		} else {
-			if id := GetUserId(cookie.Value); id < 0 {
+			if id := GetUserID(cookie.Value); id < 0 {
 				logger.Log().Debug("Not correct UserId")
 				needAuthString = true
 			}
@@ -73,7 +73,7 @@ func BuildJWTString(userID int) (string, error) {
 	return tokenString, nil
 }
 
-func GetUserId(tokenString string) int {
+func GetUserID(tokenString string) int {
 	claims := &claims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims,
 		func(t *jwt.Token) (interface{}, error) {
@@ -100,7 +100,7 @@ func CheckAuth(r *http.Request) bool {
 	if err != nil {
 		return false
 	} else {
-		if GetUserId(token.Value) < 0 {
+		if GetUserID(token.Value) < 0 {
 			return false
 		}
 	}

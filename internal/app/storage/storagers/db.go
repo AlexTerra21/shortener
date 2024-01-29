@@ -107,7 +107,13 @@ func (d *DB) createTable() error {
 	`)
 
 	if err != nil {
-		logger.Log().Debug("error when creating product table", zap.Error(err))
+		logger.Log().Debug("error when creating urls table", zap.Error(err))
+		return tx.Rollback()
+	}
+
+	_, err = tx.ExecContext(ctx, `TRUNCATE TABLE urls`)
+	if err != nil {
+		logger.Log().Debug("error when truncating urls table", zap.Error(err))
 		return tx.Rollback()
 	}
 
@@ -192,14 +198,14 @@ func (d *DB) insertURLs(ctx context.Context, urls *[]ShortenedURL) error {
 	return tx.Commit()
 }
 
-func (d *DB) GetAll(ctx context.Context, shortURLPrefix string) (allURLs []models.BatchStore, err error) {
+func (d *DB) GetAll(ctx context.Context, shortURLPrefix string) ([]models.BatchStore, error) {
 	rows, err := d.db.QueryContext(ctx, `SELECT short_url, original_url  FROM urls`)
 	if err != nil {
 		return nil, err
 	}
 	// не забываем закрыть курсор после завершения работы с данными
 	defer rows.Close()
-
+	var allURLs []models.BatchStore
 	for rows.Next() {
 		var u models.BatchStore
 		if err := rows.Scan(&u.IdxShortURL, &u.OriginalURL); err != nil {
@@ -208,5 +214,9 @@ func (d *DB) GetAll(ctx context.Context, shortURLPrefix string) (allURLs []model
 		u.IdxShortURL = shortURLPrefix + "/" + u.IdxShortURL
 		allURLs = append(allURLs, u)
 	}
-	return
+	// необходимо проверить ошибки уровня курсора
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return allURLs, nil
 }
