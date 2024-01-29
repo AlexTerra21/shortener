@@ -1,102 +1,60 @@
 package storage
 
 import (
-	"bufio"
-	"encoding/json"
-	"errors"
-	"os"
-	"slices"
-
-	"github.com/google/uuid"
-	"go.uber.org/zap"
+	"context"
 
 	"github.com/AlexTerra21/shortener/internal/app/logger"
+	"github.com/AlexTerra21/shortener/internal/app/models"
+	"github.com/AlexTerra21/shortener/internal/app/storage/storagers"
 )
 
-type shortenedURL struct {
-	UUID        string `json:"uuid"`
-	ShortURL    string `json:"short_url"`
-	OriginalURL string `json:"original_url"`
-}
-
-type Storage struct {
-	fname string
-	data  []shortenedURL
-}
-
-func NewStorage(fname string) *Storage {
-	stor := Storage{fname: fname}
-	if fname != "" { // Отключение чтения из файла
-		_ = stor.readFromFile()
-	}
-	return &stor
-}
-
-func (s *Storage) Close() {
-}
-
-func (s *Storage) Set(index string, value string) {
-	newURL := shortenedURL{
-		UUID:        uuid.New().String(),
-		ShortURL:    index,
-		OriginalURL: value,
-	}
-	logger.Log().Debug("Storage_Set", zap.Any("new_url", newURL))
-	s.data = append(s.data, newURL)
-	if s.fname != "" { // Отключение записи в файл
-		err := s.writeValueToFile(newURL)
-		if err != nil {
-			logger.Log().Error("Error write URL to file", zap.Error(err))
+func NewStorage(fname string, dbstr string) (*Storage, error) {
+	var stor Storage
+	if dbstr != "" {
+		stor = Storage{
+			S:       &storagers.DB{},
+			confStr: dbstr,
 		}
-	}
-}
-
-func (s *Storage) Get(url string) (string, error) {
-	idx := slices.IndexFunc(s.data, func(c shortenedURL) bool { return c.ShortURL == url })
-	if idx == -1 {
-		return "", errors.New("URL not found")
-	}
-
-	return s.data[idx].OriginalURL, nil
-}
-
-func (s *Storage) readFromFile() error {
-	file, err := os.OpenFile(s.fname, os.O_RDONLY|os.O_CREATE, 0666)
-	if err != nil {
-		logger.Log().Error("Error open file", zap.Error(err))
-		return err
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		val := shortenedURL{}
-		if err := json.Unmarshal(scanner.Bytes(), &val); err != nil {
-			logger.Log().Error("Error unmarshal string to json", zap.Error(err))
-			return err
+		logger.Log().Debug("Database mode")
+	} else if fname != "" {
+		stor = Storage{
+			S:       &storagers.File{},
+			confStr: fname,
 		}
-		s.data = append(s.data, val)
-		logger.Log().Debug("readFromFile", zap.Any("Value", val))
+		logger.Log().Debug("File mode")
+	} else {
+		stor = Storage{
+			S:       &storagers.Memory{},
+			confStr: "",
+		}
+		logger.Log().Debug("Memory mode")
 	}
-	logger.Log().Sugar().Infof("Shorten URL data restored from %v", s.fname)
-	return nil
+
+	if err := stor.S.New(stor.confStr); err != nil {
+		return nil, err
+	}
+
+	return &stor, nil
 }
 
-func (s *Storage) writeValueToFile(value shortenedURL) error {
-	file, err := os.OpenFile(s.fname, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		logger.Log().Error("Error create file", zap.Error(err))
-		return err
-	}
-	defer file.Close()
+func (stor *Storage) Close() {
+	stor.S.Close()
+}
 
-	valByte, err := json.Marshal(&value)
-	if err != nil {
-		logger.Log().Error("Error marshal json to string", zap.Error(err))
-		return err
-	}
-	valByte = append(valByte, '\n')
-
-	_, err = file.Write(valByte)
+func (stor *Storage) Set(ctx context.Context, index string, value string) error {
+	err := stor.S.Set(ctx, index, value)
 	return err
+}
 
+func (stor *Storage) BatchSet(ctx context.Context, data *[]models.BatchStore) error {
+	err := stor.S.BatchSet(ctx, data)
+	return err
+}
+
+func (stor *Storage) Get(ctx context.Context, idxURL string) (originalURL string, err error) {
+	originalURL, err = stor.S.Get(ctx, idxURL)
+	if err == nil {
+		logger.Log().Sugar().Debugf("Founded URL %s", originalURL)
+	}
+	return
 }
