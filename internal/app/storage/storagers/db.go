@@ -69,8 +69,8 @@ func (d *DB) BatchSet(ctx context.Context, batchValues *[]models.BatchStore, use
 	return nil
 }
 
-func (d *DB) Get(ctx context.Context, idxURL string, userID int) (originalURL string, err error) {
-	row := d.db.QueryRowContext(ctx, `SELECT original_url FROM urls WHERE short_url = $1 AND user_id = $2`, idxURL, userID)
+func (d *DB) Get(ctx context.Context, idxURL string) (originalURL string, err error) {
+	row := d.db.QueryRowContext(ctx, `SELECT original_url FROM urls WHERE short_url = $1`, idxURL)
 	err = row.Scan(&originalURL)
 	return
 }

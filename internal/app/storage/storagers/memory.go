@@ -50,8 +50,8 @@ func (m *Memory) BatchSet(_ context.Context, batchValues *[]models.BatchStore, u
 	return nil
 }
 
-func (m *Memory) Get(_ context.Context, idxURL string, userID int) (string, error) {
-	idx := slices.IndexFunc(m.data, func(c ShortenedURL) bool { return c.IdxShortURL == idxURL && c.UserID == userID })
+func (m *Memory) Get(_ context.Context, idxURL string) (string, error) {
+	idx := slices.IndexFunc(m.data, func(c ShortenedURL) bool { return c.IdxShortURL == idxURL })
 	if idx == -1 {
 		return "", errors.New("URL not found")
 	}

@@ -105,14 +105,8 @@ func storeURL(c *config.Config) http.HandlerFunc {
 }
 func getURL(c *config.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userID := auth.CheckAuth(r)
-		if userID < 0 {
-			w.Header().Set("content-type", "application/text")
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
 		id := chi.URLParam(r, "id")
-		url, err := c.Storage.Get(r.Context(), id, userID)
+		url, err := c.Storage.Get(r.Context(), id)
 		if err != nil {
 			logger.Log().Debug("URL not found", zap.Int("status", http.StatusNotFound), zap.String("id", id))
 			http.Error(w, "URL not found", http.StatusNotFound)

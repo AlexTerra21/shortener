@@ -51,8 +51,8 @@ func (stor *Storage) BatchSet(ctx context.Context, data *[]models.BatchStore, us
 	return err
 }
 
-func (stor *Storage) Get(ctx context.Context, idxURL string, userID int) (originalURL string, err error) {
-	originalURL, err = stor.S.Get(ctx, idxURL, userID)
+func (stor *Storage) Get(ctx context.Context, idxURL string) (originalURL string, err error) {
+	originalURL, err = stor.S.Get(ctx, idxURL)
 	if err == nil {
 		logger.Log().Sugar().Debugf("Founded URL %s", originalURL)
 	}
