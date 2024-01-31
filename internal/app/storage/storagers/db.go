@@ -35,11 +35,12 @@ func (d *DB) Close() {
 	d.db.Close()
 }
 
-func (d *DB) Set(ctx context.Context, index string, value string) error {
+func (d *DB) Set(ctx context.Context, index string, value string, userID int) error {
 	newURL := ShortenedURL{
 		UUID:        uuid.New().String(),
 		IdxShortURL: index,
 		OriginalURL: value,
+		UserID:      userID,
 	}
 	if err := d.insertURL(ctx, newURL); err != nil {
 		return err
@@ -48,13 +49,14 @@ func (d *DB) Set(ctx context.Context, index string, value string) error {
 	return nil
 }
 
-func (d *DB) BatchSet(ctx context.Context, batchValues *[]models.BatchStore) error {
+func (d *DB) BatchSet(ctx context.Context, batchValues *[]models.BatchStore, userID int) error {
 	newURLs := make([]ShortenedURL, 0)
 	for _, url := range *batchValues {
 		newURL := ShortenedURL{
 			UUID:        uuid.New().String(),
 			IdxShortURL: url.IdxShortURL,
 			OriginalURL: url.OriginalURL,
+			UserID:      userID,
 		}
 		newURLs = append(newURLs, newURL)
 		logger.Log().Debug("Storage_Set_File", zap.Any("new_url", newURL))
@@ -67,14 +69,14 @@ func (d *DB) BatchSet(ctx context.Context, batchValues *[]models.BatchStore) err
 	return nil
 }
 
-func (d *DB) Get(ctx context.Context, idxURL string) (originalURL string, err error) {
-	row := d.db.QueryRowContext(ctx, `SELECT original_url FROM urls WHERE short_url = $1`, idxURL)
+func (d *DB) Get(ctx context.Context, idxURL string, userID int) (originalURL string, err error) {
+	row := d.db.QueryRowContext(ctx, `SELECT original_url FROM urls WHERE short_url = $1 AND user_id = $2`, idxURL, userID)
 	err = row.Scan(&originalURL)
 	return
 }
 
-func (d *DB) GetShortURL(ctx context.Context, originalURL string) (idxURL string, err error) {
-	row := d.db.QueryRowContext(ctx, `SELECT short_url FROM urls WHERE original_url = $1`, originalURL)
+func (d *DB) GetShortURL(ctx context.Context, originalURL string, userID int) (idxURL string, err error) {
+	row := d.db.QueryRowContext(ctx, `SELECT short_url FROM urls WHERE original_url = $1 AND user_id = $2`, originalURL, userID)
 	err = row.Scan(&idxURL)
 	return
 }
@@ -102,7 +104,8 @@ func (d *DB) createTable() error {
 		CREATE TABLE IF NOT EXISTS urls (
 			uuid VARCHAR (100) UNIQUE NOT NULL,
 			short_url VARCHAR (100) UNIQUE NOT NULL,
-			original_url VARCHAR (100) UNIQUE NOT NULL
+			original_url VARCHAR (100) UNIQUE NOT NULL,
+			user_id NUMERIC 
 		)
 	`)
 
@@ -123,7 +126,7 @@ func (d *DB) insertURL(ctx context.Context, url ShortenedURL) error {
 	// если Commit будет раньше, то откат проигнорируется
 	defer tx.Rollback()
 
-	query := `INSERT INTO urls(uuid, short_url, original_url) VALUES ($1, $2, $3)`
+	query := `INSERT INTO urls(uuid, short_url, original_url, user_id) VALUES ($1, $2, $3, $4)`
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
@@ -134,7 +137,7 @@ func (d *DB) insertURL(ctx context.Context, url ShortenedURL) error {
 	}
 	defer stmt.Close()
 
-	res, err := stmt.ExecContext(ctx, url.UUID, url.IdxShortURL, url.OriginalURL)
+	res, err := stmt.ExecContext(ctx, url.UUID, url.IdxShortURL, url.OriginalURL, url.UserID)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && (pgerrcode.UniqueViolation == pgErr.Code) {
@@ -162,8 +165,8 @@ func (d *DB) insertURLs(ctx context.Context, urls *[]ShortenedURL) error {
 	// если Commit будет раньше, то откат проигнорируется
 	defer tx.Rollback()
 	query := `
-		INSERT INTO urls(uuid, short_url, original_url) 
-			VALUES ($1, $2, $3)
+		INSERT INTO urls(uuid, short_url, original_url, user_id) 
+			VALUES ($1, $2, $3, $4)
 	`
 	ctxLocal, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -175,7 +178,7 @@ func (d *DB) insertURLs(ctx context.Context, urls *[]ShortenedURL) error {
 	defer stmt.Close()
 	var allRows int64
 	for _, url := range *urls {
-		res, err := stmt.ExecContext(ctxLocal, url.UUID, url.IdxShortURL, url.OriginalURL)
+		res, err := stmt.ExecContext(ctxLocal, url.UUID, url.IdxShortURL, url.OriginalURL, url.UserID)
 		if err != nil {
 			logger.Log().Debug("error when inserting row into urls table", zap.Error(err))
 			return err
@@ -192,8 +195,8 @@ func (d *DB) insertURLs(ctx context.Context, urls *[]ShortenedURL) error {
 	return tx.Commit()
 }
 
-func (d *DB) GetAll(ctx context.Context, shortURLPrefix string) ([]models.BatchStore, error) {
-	rows, err := d.db.QueryContext(ctx, `SELECT short_url, original_url  FROM urls`)
+func (d *DB) GetAll(ctx context.Context, shortURLPrefix string, userID int) ([]models.BatchStore, error) {
+	rows, err := d.db.QueryContext(ctx, `SELECT short_url, original_url  FROM urls WHERE user_id = $1`, userID)
 	if err != nil {
 		return nil, err
 	}

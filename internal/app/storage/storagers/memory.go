@@ -24,23 +24,25 @@ func (m *Memory) New(string) error {
 func (m *Memory) Close() {
 }
 
-func (m *Memory) Set(_ context.Context, index string, value string) error {
+func (m *Memory) Set(_ context.Context, index string, value string, userID int) error {
 	newURL := ShortenedURL{
 		UUID:        uuid.New().String(),
 		IdxShortURL: index,
 		OriginalURL: value,
+		UserID:      userID,
 	}
 	m.data = append(m.data, newURL)
 	logger.Log().Debug("Storage_Set_Memory", zap.Any("new_url", newURL))
 	return nil
 }
 
-func (m *Memory) BatchSet(_ context.Context, batchValues *[]models.BatchStore) error {
+func (m *Memory) BatchSet(_ context.Context, batchValues *[]models.BatchStore, userID int) error {
 	for _, url := range *batchValues {
 		newURL := ShortenedURL{
 			UUID:        uuid.New().String(),
 			IdxShortURL: url.IdxShortURL,
 			OriginalURL: url.OriginalURL,
+			UserID:      userID,
 		}
 		m.data = append(m.data, newURL)
 		logger.Log().Debug("Storage_Set_Memory", zap.Any("new_url", newURL))
@@ -48,8 +50,8 @@ func (m *Memory) BatchSet(_ context.Context, batchValues *[]models.BatchStore) e
 	return nil
 }
 
-func (m *Memory) Get(_ context.Context, idxURL string) (string, error) {
-	idx := slices.IndexFunc(m.data, func(c ShortenedURL) bool { return c.IdxShortURL == idxURL })
+func (m *Memory) Get(_ context.Context, idxURL string, userID int) (string, error) {
+	idx := slices.IndexFunc(m.data, func(c ShortenedURL) bool { return c.IdxShortURL == idxURL && c.UserID == userID })
 	if idx == -1 {
 		return "", errors.New("URL not found")
 	}

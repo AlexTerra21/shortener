@@ -1,11 +1,13 @@
 package auth
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/AlexTerra21/shortener/internal/app/logger"
+	"github.com/AlexTerra21/shortener/internal/app/utils"
 	"github.com/golang-jwt/jwt/v4"
 )
 
@@ -14,21 +16,25 @@ type claims struct {
 	UserID int
 }
 
+type ContextKey string
+
 const (
-	tokenExp  = time.Hour * 3
-	secretKey = "supersecretkey"
-	UserID    = 17
+	tokenExp             = time.Hour * 3
+	secretKey            = "supersecretkey"
+	UserIDKey ContextKey = "userID"
 )
 
 func WithAuth(h http.Handler) http.HandlerFunc {
 	authFunc := func(w http.ResponseWriter, r *http.Request) {
 		needAuthString := false
+		var userID int
 		cookie, err := r.Cookie("Authorization")
 		if err != nil {
 			logger.Log().Debug("No Cookies")
 			needAuthString = true
 		} else {
-			if id := GetUserID(cookie.Value); id < 0 {
+			userID = GetUserID(cookie.Value)
+			if userID < 0 {
 				logger.Log().Debug("Not correct UserId")
 				needAuthString = true
 			}
@@ -36,15 +42,18 @@ func WithAuth(h http.Handler) http.HandlerFunc {
 		cookie = &http.Cookie{
 			Name: "Authorization",
 		}
+
 		if needAuthString {
-			token, err := BuildJWTString(UserID)
+			userID = utils.RandInt()
+			token, err := BuildJWTString(userID)
 			if err == nil {
 				cookie.Value = token
 				http.SetCookie(w, cookie)
 			}
 		}
+		ctx := context.WithValue(r.Context(), UserIDKey, userID)
 
-		h.ServeHTTP(w, r)
+		h.ServeHTTP(w, r.WithContext(ctx))
 
 	}
 
@@ -87,22 +96,22 @@ func GetUserID(tokenString string) int {
 	}
 
 	if !token.Valid {
-		fmt.Println("Token is not valid")
 		return -1
 	}
 
-	fmt.Println("Token os valid")
 	return claims.UserID
 }
 
-func CheckAuth(r *http.Request) bool {
+func CheckAuth(r *http.Request) int {
 	token, err := r.Cookie("Authorization")
+	var userID int
 	if err != nil {
-		return false
+		return -1
 	} else {
-		if GetUserID(token.Value) < 0 {
-			return false
+		userID = GetUserID(token.Value)
+		if userID < 0 {
+			return -1
 		}
 	}
-	return true
+	return userID
 }

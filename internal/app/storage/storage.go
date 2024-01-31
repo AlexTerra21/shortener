@@ -41,18 +41,18 @@ func (stor *Storage) Close() {
 	stor.S.Close()
 }
 
-func (stor *Storage) Set(ctx context.Context, index string, value string) error {
-	err := stor.S.Set(ctx, index, value)
+func (stor *Storage) Set(ctx context.Context, index string, value string, userID int) error {
+	err := stor.S.Set(ctx, index, value, userID)
 	return err
 }
 
-func (stor *Storage) BatchSet(ctx context.Context, data *[]models.BatchStore) error {
-	err := stor.S.BatchSet(ctx, data)
+func (stor *Storage) BatchSet(ctx context.Context, data *[]models.BatchStore, userID int) error {
+	err := stor.S.BatchSet(ctx, data, userID)
 	return err
 }
 
-func (stor *Storage) Get(ctx context.Context, idxURL string) (originalURL string, err error) {
-	originalURL, err = stor.S.Get(ctx, idxURL)
+func (stor *Storage) Get(ctx context.Context, idxURL string, userID int) (originalURL string, err error) {
+	originalURL, err = stor.S.Get(ctx, idxURL, userID)
 	if err == nil {
 		logger.Log().Sugar().Debugf("Founded URL %s", originalURL)
 	}

@@ -19,3 +19,7 @@ func RandSeq(n int) string {
 	}
 	return string(b)
 }
+
+func RandInt() int {
+	return rng.Intn(1000)
+}

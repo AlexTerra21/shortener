@@ -32,11 +32,12 @@ func (f *File) New(fName string) error {
 func (f *File) Close() {
 }
 
-func (f *File) Set(_ context.Context, index string, value string) error {
+func (f *File) Set(_ context.Context, index string, value string, userID int) error {
 	newURL := ShortenedURL{
 		UUID:        uuid.New().String(),
 		IdxShortURL: index,
 		OriginalURL: value,
+		UserID:      userID,
 	}
 	f.data = append(f.data, newURL)
 	newURLs := []ShortenedURL{newURL}
@@ -49,13 +50,14 @@ func (f *File) Set(_ context.Context, index string, value string) error {
 	return nil
 }
 
-func (f *File) BatchSet(_ context.Context, batchValues *[]models.BatchStore) error {
+func (f *File) BatchSet(_ context.Context, batchValues *[]models.BatchStore, userID int) error {
 	newURLs := make([]ShortenedURL, 0)
 	for _, url := range *batchValues {
 		newURL := ShortenedURL{
 			UUID:        uuid.New().String(),
 			IdxShortURL: url.IdxShortURL,
 			OriginalURL: url.OriginalURL,
+			UserID:      userID,
 		}
 		f.data = append(f.data, newURL)
 		newURLs = append(newURLs, newURL)
@@ -69,8 +71,8 @@ func (f *File) BatchSet(_ context.Context, batchValues *[]models.BatchStore) err
 	return nil
 }
 
-func (f *File) Get(_ context.Context, idxURL string) (string, error) {
-	idx := slices.IndexFunc(f.data, func(c ShortenedURL) bool { return c.IdxShortURL == idxURL })
+func (f *File) Get(_ context.Context, idxURL string, userID int) (string, error) {
+	idx := slices.IndexFunc(f.data, func(c ShortenedURL) bool { return c.IdxShortURL == idxURL && c.UserID == userID })
 	if idx == -1 {
 		return "", errors.New("URL not found")
 	}
