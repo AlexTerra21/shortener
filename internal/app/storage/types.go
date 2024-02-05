@@ -9,9 +9,9 @@ import (
 type Storager interface {
 	New(string) error
 	Close()
-	Set(context.Context, string, string) error
-	BatchSet(context.Context, *[]models.BatchStore) error
-	Get(context.Context, string) (string, error)
+	Set(context.Context, string, string, int) error
+	BatchSet(context.Context, *[]models.BatchStore, int) error
+	Get(context.Context, string) (string, bool, error)
 }
 
 type Storage struct {
