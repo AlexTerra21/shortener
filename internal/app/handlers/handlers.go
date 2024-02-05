@@ -250,7 +250,7 @@ func delete(c *config.Config) http.HandlerFunc {
 		for _, urlID := range request {
 			c.DelQueue.Push(storagers.Deleter{
 				UserID: userID,
-				UrlID:  urlID,
+				URLID:  urlID,
 			})
 		}
 		w.WriteHeader(http.StatusAccepted)

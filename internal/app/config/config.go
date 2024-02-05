@@ -31,7 +31,6 @@ func (c *Config) InitStorage() (err error) {
 
 func (c *Config) InitAsync() {
 	c.DelQueue = async.NewAsync(c.Storage)
-	return
 }
 
 func (c *Config) GetFileStoragePath() string {

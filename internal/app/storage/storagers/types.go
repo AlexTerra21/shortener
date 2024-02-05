@@ -9,5 +9,5 @@ type ShortenedURL struct {
 
 type Deleter struct {
 	UserID int
-	UrlID  string
+	URLID  string
 }
