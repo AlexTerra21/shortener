@@ -8,7 +8,6 @@ import (
 	"os"
 	"slices"
 
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 
 	"github.com/AlexTerra21/shortener/internal/app/logger"
@@ -34,10 +33,10 @@ func (f *File) Close() {
 
 func (f *File) Set(_ context.Context, index string, value string, userID int) error {
 	newURL := ShortenedURL{
-		UUID:        uuid.New().String(),
+		UUID:        userID,
 		IdxShortURL: index,
 		OriginalURL: value,
-		UserID:      userID,
+		DeletedFlag: false,
 	}
 	f.data = append(f.data, newURL)
 	newURLs := []ShortenedURL{newURL}
@@ -54,10 +53,10 @@ func (f *File) BatchSet(_ context.Context, batchValues *[]models.BatchStore, use
 	newURLs := make([]ShortenedURL, 0)
 	for _, url := range *batchValues {
 		newURL := ShortenedURL{
-			UUID:        uuid.New().String(),
+			UUID:        userID,
 			IdxShortURL: url.IdxShortURL,
 			OriginalURL: url.OriginalURL,
-			UserID:      userID,
+			DeletedFlag: false,
 		}
 		f.data = append(f.data, newURL)
 		newURLs = append(newURLs, newURL)
@@ -71,12 +70,12 @@ func (f *File) BatchSet(_ context.Context, batchValues *[]models.BatchStore, use
 	return nil
 }
 
-func (f *File) Get(_ context.Context, idxURL string) (string, error) {
+func (f *File) Get(_ context.Context, idxURL string) (string, bool, error) {
 	idx := slices.IndexFunc(f.data, func(c ShortenedURL) bool { return c.IdxShortURL == idxURL })
 	if idx == -1 {
-		return "", errors.New("URL not found")
+		return "", false, errors.New("URL not found")
 	}
-	return f.data[idx].OriginalURL, nil
+	return f.data[idx].OriginalURL, f.data[idx].DeletedFlag, nil
 }
 
 func (f *File) readFromFile() error {

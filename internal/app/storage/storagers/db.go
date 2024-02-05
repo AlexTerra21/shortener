@@ -6,7 +6,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -37,10 +36,10 @@ func (d *DB) Close() {
 
 func (d *DB) Set(ctx context.Context, index string, value string, userID int) error {
 	newURL := ShortenedURL{
-		UUID:        uuid.New().String(),
+		UUID:        userID,
 		IdxShortURL: index,
 		OriginalURL: value,
-		UserID:      userID,
+		DeletedFlag: false,
 	}
 	if err := d.insertURL(ctx, newURL); err != nil {
 		return err
@@ -53,10 +52,10 @@ func (d *DB) BatchSet(ctx context.Context, batchValues *[]models.BatchStore, use
 	newURLs := make([]ShortenedURL, 0)
 	for _, url := range *batchValues {
 		newURL := ShortenedURL{
-			UUID:        uuid.New().String(),
+			UUID:        userID,
 			IdxShortURL: url.IdxShortURL,
 			OriginalURL: url.OriginalURL,
-			UserID:      userID,
+			DeletedFlag: false,
 		}
 		newURLs = append(newURLs, newURL)
 		logger.Log().Debug("Storage_Set_File", zap.Any("new_url", newURL))
@@ -69,9 +68,9 @@ func (d *DB) BatchSet(ctx context.Context, batchValues *[]models.BatchStore, use
 	return nil
 }
 
-func (d *DB) Get(ctx context.Context, idxURL string) (originalURL string, err error) {
-	row := d.db.QueryRowContext(ctx, `SELECT original_url FROM urls WHERE short_url = $1`, idxURL)
-	err = row.Scan(&originalURL)
+func (d *DB) Get(ctx context.Context, idxURL string) (originalURL string, isDeleted bool, err error) {
+	row := d.db.QueryRowContext(ctx, `SELECT original_url, is_deleted FROM urls WHERE short_url = $1`, idxURL)
+	err = row.Scan(&originalURL, &isDeleted)
 	return
 }
 
@@ -102,10 +101,10 @@ func (d *DB) createTable() error {
 
 	_, err = tx.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS urls (
-			uuid VARCHAR (100) UNIQUE NOT NULL,
+			user_id NUMERIC,
 			short_url VARCHAR (100) UNIQUE NOT NULL,
 			original_url VARCHAR (100) UNIQUE NOT NULL,
-			user_id NUMERIC 
+			is_deleted BOOLEAN 
 		)
 	`)
 
@@ -126,7 +125,7 @@ func (d *DB) insertURL(ctx context.Context, url ShortenedURL) error {
 	// если Commit будет раньше, то откат проигнорируется
 	defer tx.Rollback()
 
-	query := `INSERT INTO urls(uuid, short_url, original_url, user_id) VALUES ($1, $2, $3, $4)`
+	query := `INSERT INTO urls(user_id, short_url, original_url, is_deleted) VALUES ($1, $2, $3, $4)`
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
@@ -137,7 +136,7 @@ func (d *DB) insertURL(ctx context.Context, url ShortenedURL) error {
 	}
 	defer stmt.Close()
 
-	res, err := stmt.ExecContext(ctx, url.UUID, url.IdxShortURL, url.OriginalURL, url.UserID)
+	res, err := stmt.ExecContext(ctx, url.UUID, url.IdxShortURL, url.OriginalURL, url.DeletedFlag)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && (pgerrcode.UniqueViolation == pgErr.Code) {
@@ -165,7 +164,7 @@ func (d *DB) insertURLs(ctx context.Context, urls *[]ShortenedURL) error {
 	// если Commit будет раньше, то откат проигнорируется
 	defer tx.Rollback()
 	query := `
-		INSERT INTO urls(uuid, short_url, original_url, user_id) 
+		INSERT INTO urls(user_id, short_url, original_url, is_deleted) 
 			VALUES ($1, $2, $3, $4)
 	`
 	ctxLocal, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -178,7 +177,7 @@ func (d *DB) insertURLs(ctx context.Context, urls *[]ShortenedURL) error {
 	defer stmt.Close()
 	var allRows int64
 	for _, url := range *urls {
-		res, err := stmt.ExecContext(ctxLocal, url.UUID, url.IdxShortURL, url.OriginalURL, url.UserID)
+		res, err := stmt.ExecContext(ctxLocal, url.UUID, url.IdxShortURL, url.OriginalURL, url.DeletedFlag)
 		if err != nil {
 			logger.Log().Debug("error when inserting row into urls table", zap.Error(err))
 			return err
@@ -191,6 +190,46 @@ func (d *DB) insertURLs(ctx context.Context, urls *[]ShortenedURL) error {
 		allRows += rows
 	}
 	logger.Log().Debug("Inserted", zap.Int64("Rows", allRows))
+
+	return tx.Commit()
+}
+
+func (d *DB) Delete(ctx context.Context, dels []Deleter) error {
+	tx, err := d.db.Begin()
+	if err != nil {
+		return err
+	}
+	// можно вызвать Rollback в defer,
+	// если Commit будет раньше, то откат проигнорируется
+	defer tx.Rollback()
+	query := `
+		UPDATE urls
+		SET is_deleted = true
+		WHERE short_url = $1 AND user_id = $2
+	`
+	ctxLocal, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	stmt, err := tx.PrepareContext(ctxLocal, query)
+	if err != nil {
+		logger.Log().Debug("error when preparing SQL statement", zap.Error(err))
+		return err
+	}
+	defer stmt.Close()
+	var allRows int64
+	for _, del := range dels {
+		res, err := stmt.ExecContext(ctxLocal, del.UrlID, del.UserID)
+		if err != nil {
+			logger.Log().Debug("error when updating row in urls table", zap.Error(err))
+			return err
+		}
+		rows, err := res.RowsAffected()
+		if err != nil {
+			logger.Log().Debug("error when finding rows affected", zap.Error(err))
+			return err
+		}
+		allRows += rows
+	}
+	logger.Log().Debug("Updated", zap.Int64("Rows", allRows))
 
 	return tx.Commit()
 }

@@ -25,6 +25,7 @@ func MainRouter(c *config.Config) chi.Router {
 	r.Post("/api/shorten", auth.WithAuth(logger.WithLogging(compress.WithCompress(shortenURL(c)))))
 	r.Post("/api/shorten/batch", auth.WithAuth(logger.WithLogging(compress.WithCompress(batch(c)))))
 	r.Get("/api/user/urls", logger.WithLogging(compress.WithCompress(urls(c))))
+	r.Delete("/api/user/urls", auth.WithAuth(logger.WithLogging(compress.WithCompress(delete(c)))))
 	r.Get("/{id}", logger.WithLogging(getURL(c)))
 	r.Get("/ping", logger.WithLogging(ping(c)))
 	r.MethodNotAllowed(notAllowedHandler)
@@ -50,7 +51,7 @@ func shortenURL(c *config.Config) http.HandlerFunc {
 		id := utils.RandSeq(8)
 		var response models.Response
 		w.Header().Set("content-type", "application/json")
-		if err := c.Storage.Set(r.Context(), id, request.URL, userID); err != nil {
+		if err := c.Storage.S.Set(r.Context(), id, request.URL, userID); err != nil {
 			logger.Log().Debug("Error adding new url", zap.Error(err))
 			if errors.Is(err, errs.ErrConflict) {
 				w.WriteHeader(http.StatusConflict)
@@ -83,7 +84,7 @@ func storeURL(c *config.Config) http.HandlerFunc {
 		id := utils.RandSeq(8)
 		var resp string
 		w.Header().Set("content-type", "application/text")
-		if err := c.Storage.Set(r.Context(), id, string(url), userID); err != nil {
+		if err := c.Storage.S.Set(r.Context(), id, string(url), userID); err != nil {
 			logger.Log().Debug("Error adding new url", zap.Error(err))
 			if errors.Is(err, errs.ErrConflict) {
 				w.WriteHeader(http.StatusConflict)
@@ -106,10 +107,14 @@ func storeURL(c *config.Config) http.HandlerFunc {
 func getURL(c *config.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "id")
-		url, err := c.Storage.Get(r.Context(), id)
+		url, isDel, err := c.Storage.S.Get(r.Context(), id)
 		if err != nil {
 			logger.Log().Debug("URL not found", zap.Int("status", http.StatusNotFound), zap.String("id", id))
 			http.Error(w, "URL not found", http.StatusNotFound)
+			return
+		}
+		if isDel {
+			http.Error(w, "URL deleted", http.StatusGone)
 			return
 		}
 		w.Header().Set("Location", url)
@@ -165,7 +170,7 @@ func batch(c *config.Config) http.HandlerFunc {
 			response = append(response, resp)
 		}
 
-		if err := c.Storage.BatchSet(r.Context(), &batchStor, userID); err != nil {
+		if err := c.Storage.S.BatchSet(r.Context(), &batchStor, userID); err != nil {
 			logger.Log().Debug("Error adding new url", zap.Error(err))
 			w.Header().Set("content-type", "application/text")
 			w.WriteHeader(http.StatusInternalServerError)
@@ -222,5 +227,32 @@ func urls(c *config.Config) http.HandlerFunc {
 			return
 		}
 
+	}
+}
+
+func delete(c *config.Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID := auth.CheckAuth(r)
+		if userID < 0 {
+			w.Header().Set("content-type", "application/text")
+			w.WriteHeader(http.StatusUnauthorized)
+			_, _ = w.Write([]byte("Unauthorized"))
+			return
+		}
+		var request []string
+		decoder := json.NewDecoder(r.Body)
+		if err := decoder.Decode(&request); err != nil {
+			logger.Log().Debug("cannot decode request JSON body", zap.Error(err))
+			w.Header().Set("content-type", "application/text")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		for _, urlID := range request {
+			c.DelQueue.Push(storagers.Deleter{
+				UserID: userID,
+				UrlID:  urlID,
+			})
+		}
+		w.WriteHeader(http.StatusAccepted)
 	}
 }

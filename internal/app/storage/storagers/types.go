@@ -1,8 +1,13 @@
 package storagers
 
 type ShortenedURL struct {
-	UUID        string `json:"uuid"`
+	UUID        int    `json:"user_id"`
 	IdxShortURL string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
-	UserID      int    `json:"user_id"`
+	DeletedFlag bool   `json:"is_deleted"`
+}
+
+type Deleter struct {
+	UserID int
+	UrlID  string
 }

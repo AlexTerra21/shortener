@@ -11,7 +11,7 @@ type Storager interface {
 	Close()
 	Set(context.Context, string, string, int) error
 	BatchSet(context.Context, *[]models.BatchStore, int) error
-	Get(context.Context, string) (string, error)
+	Get(context.Context, string) (string, bool, error)
 }
 
 type Storage struct {

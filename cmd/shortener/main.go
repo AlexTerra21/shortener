@@ -36,7 +36,9 @@ func run() (err error) {
 	if err = config.InitStorage(); err != nil {
 		return err
 	}
-	defer config.Storage.Close()
+	defer config.Storage.S.Close()
+
+	config.InitAsync()
 
 	signalCh := make(chan os.Signal, 1)
 	signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM)

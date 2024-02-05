@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/AlexTerra21/shortener/internal/app/async"
 	"github.com/AlexTerra21/shortener/internal/app/storage"
 )
 
@@ -15,6 +16,7 @@ type Config struct {
 	fileStoragePath string
 	dbConnectString string
 	Storage         *storage.Storage
+	DelQueue        *async.Async
 }
 
 func NewConfig() *Config {
@@ -24,7 +26,12 @@ func NewConfig() *Config {
 func (c *Config) InitStorage() (err error) {
 	// logger.Log().Info(c.dbConnectString)
 	c.Storage, err = storage.NewStorage(c.fileStoragePath, c.dbConnectString)
-	return err
+	return
+}
+
+func (c *Config) InitAsync() {
+	c.DelQueue = async.NewAsync(c.Storage)
+	return
 }
 
 func (c *Config) GetFileStoragePath() string {
