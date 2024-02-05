@@ -194,7 +194,7 @@ func (d *DB) insertURLs(ctx context.Context, urls *[]ShortenedURL) error {
 	return tx.Commit()
 }
 
-func (d *DB) Delete(ctx context.Context, dels []Deleter) error {
+func (d *DB) Delete(ctx context.Context, dels []UsersURL) error {
 	tx, err := d.db.Begin()
 	if err != nil {
 		return err

@@ -6,9 +6,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/golang-jwt/jwt/v4"
+
 	"github.com/AlexTerra21/shortener/internal/app/logger"
 	"github.com/AlexTerra21/shortener/internal/app/utils"
-	"github.com/golang-jwt/jwt/v4"
 )
 
 type claims struct {

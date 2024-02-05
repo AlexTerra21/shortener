@@ -7,7 +7,7 @@ type ShortenedURL struct {
 	DeletedFlag bool   `json:"is_deleted"`
 }
 
-type Deleter struct {
+type UsersURL struct {
 	UserID int
 	URLID  string
 }
