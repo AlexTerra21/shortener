@@ -217,7 +217,7 @@ func (d *DB) Delete(ctx context.Context, dels []Deleter) error {
 	defer stmt.Close()
 	var allRows int64
 	for _, del := range dels {
-		res, err := stmt.ExecContext(ctxLocal, del.UrlID, del.UserID)
+		res, err := stmt.ExecContext(ctxLocal, del.URLID, del.UserID)
 		if err != nil {
 			logger.Log().Debug("error when updating row in urls table", zap.Error(err))
 			return err
