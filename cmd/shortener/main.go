@@ -18,6 +18,7 @@ import (
 // ./cmd/shortener/shortener.exe -a=:8091 -b=http://localhost:8091 -l debug
 // ./cmd/shortener/shortener.exe -a=:8091 -b=http://localhost:8091 -l debug -f ./tmp/short-url-db.json
 // ./cmd/shortener/shortener.exe -a=:8091 -b=http://localhost:8091 -l debug -d "host=localhost user=shortner password=userpassword dbname=short_urls sslmode=disable"
+//
 // функция main вызывается автоматически при запуске приложения
 func main() {
 	if err := run(); err != nil {
