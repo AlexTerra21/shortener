@@ -16,10 +16,12 @@ import (
 	"github.com/AlexTerra21/shortener/internal/app/models"
 )
 
+// Структура для хранения данных в базе данных
 type DB struct {
 	db *sql.DB
 }
 
+// Инициализация хранилища
 func (d *DB) New(dbConf string) error {
 	db, err := sql.Open("pgx", dbConf)
 	if err != nil {
@@ -30,10 +32,12 @@ func (d *DB) New(dbConf string) error {
 	return err
 }
 
+// Закрытие хранилища
 func (d *DB) Close() {
 	d.db.Close()
 }
 
+// Добавление данных в хранилище
 func (d *DB) Set(ctx context.Context, index string, value string, userID int) error {
 	newURL := ShortenedURL{
 		UUID:        userID,
@@ -48,6 +52,7 @@ func (d *DB) Set(ctx context.Context, index string, value string, userID int) er
 	return nil
 }
 
+// Добавление пакета данных в хранилище
 func (d *DB) BatchSet(ctx context.Context, batchValues *[]models.BatchStore, userID int) error {
 	newURLs := make([]ShortenedURL, 0)
 	for _, url := range *batchValues {
@@ -68,18 +73,21 @@ func (d *DB) BatchSet(ctx context.Context, batchValues *[]models.BatchStore, use
 	return nil
 }
 
+// Получение оригинального URL из хранилища
 func (d *DB) Get(ctx context.Context, idxURL string) (originalURL string, isDeleted bool, err error) {
 	row := d.db.QueryRowContext(ctx, `SELECT original_url, is_deleted FROM urls WHERE short_url = $1`, idxURL)
 	err = row.Scan(&originalURL, &isDeleted)
 	return
 }
 
+// Получение сокращенного URL из хранилища
 func (d *DB) GetShortURL(ctx context.Context, originalURL string, userID int) (idxURL string, err error) {
 	row := d.db.QueryRowContext(ctx, `SELECT short_url FROM urls WHERE original_url = $1 AND user_id = $2`, originalURL, userID)
 	err = row.Scan(&idxURL)
 	return
 }
 
+// Проверка доступности базы данных
 func (d *DB) Ping(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
@@ -89,6 +97,7 @@ func (d *DB) Ping(ctx context.Context) error {
 	return nil
 }
 
+// Создание таблиц в базе данных
 func (d *DB) createTable() error {
 	// запускаем транзакцию
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -116,6 +125,7 @@ func (d *DB) createTable() error {
 	return tx.Commit()
 }
 
+// Метод для добавления записи в рамках одной транзакции
 func (d *DB) insertURL(ctx context.Context, url ShortenedURL) error {
 	tx, err := d.db.Begin()
 	if err != nil {
@@ -155,6 +165,7 @@ func (d *DB) insertURL(ctx context.Context, url ShortenedURL) error {
 	return tx.Commit()
 }
 
+// Метод для добавления пакета записей в рамках одной транзакции
 func (d *DB) insertURLs(ctx context.Context, urls *[]ShortenedURL) error {
 	tx, err := d.db.Begin()
 	if err != nil {
@@ -194,6 +205,7 @@ func (d *DB) insertURLs(ctx context.Context, urls *[]ShortenedURL) error {
 	return tx.Commit()
 }
 
+// Пометка записи в базе данных как удаленной
 func (d *DB) Delete(ctx context.Context, dels []UsersURL) error {
 	tx, err := d.db.Begin()
 	if err != nil {
@@ -234,6 +246,7 @@ func (d *DB) Delete(ctx context.Context, dels []UsersURL) error {
 	return tx.Commit()
 }
 
+// Получение всех записей из БД по userID
 func (d *DB) GetAll(ctx context.Context, shortURLPrefix string, userID int) ([]models.BatchStore, error) {
 	rows, err := d.db.QueryContext(ctx, `SELECT short_url, original_url  FROM urls WHERE user_id = $1`, userID)
 	if err != nil {

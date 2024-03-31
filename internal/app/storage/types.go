@@ -6,6 +6,7 @@ import (
 	"github.com/AlexTerra21/shortener/internal/app/models"
 )
 
+// Интерфейс, который должны реализовать "хранители" (память, файл, база)
 type Storager interface {
 	New(string) error
 	Close()
@@ -14,7 +15,8 @@ type Storager interface {
 	Get(context.Context, string) (string, bool, error)
 }
 
+// Описание "хранителя"
 type Storage struct {
-	S       Storager
-	confStr string
+	S       Storager // ссылка на "хранителя"
+	confStr string   // парамеры настройки
 }

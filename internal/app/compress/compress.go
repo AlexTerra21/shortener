@@ -10,8 +10,10 @@ import (
 	"go.uber.org/zap"
 )
 
+// Типы запросов для сжатия
 const compressContent = "application/json, text/html"
 
+// Проверка, следует ли сжимать контент
 func IsCompress(content string) bool {
 	return strings.Contains(compressContent, content)
 }
@@ -23,17 +25,20 @@ type compressWriter struct {
 	zw *gzip.Writer
 }
 
+// Инициализация структуры compressWriter
 func newCompressWriter(w http.ResponseWriter) *compressWriter {
 	return &compressWriter{
 		w:  w,
-		zw: gzip.NewWriter(w),
+		zw: gzip.NewWriter(w), //
 	}
 }
 
+// Реализация метода Header интерфейса ResponseWriter
 func (c *compressWriter) Header() http.Header {
 	return c.w.Header()
 }
 
+// Реализация метода Write интерфейса ResponseWriter
 func (c *compressWriter) Write(p []byte) (int, error) {
 	if IsCompress(c.Header().Get("Content-Type")) {
 		return c.zw.Write(p)
@@ -42,6 +47,7 @@ func (c *compressWriter) Write(p []byte) (int, error) {
 	}
 }
 
+// Реализация метода WriteHeader интерфейса ResponseWriter
 func (c *compressWriter) WriteHeader(statusCode int) {
 	if IsCompress(c.Header().Get("Content-Type")) {
 		c.w.Header().Set("Content-Encoding", "gzip")
@@ -63,6 +69,7 @@ type compressReader struct {
 	zr *gzip.Reader
 }
 
+// Инициализация Reader с функцией декомпрессии
 func newCompressReader(r io.ReadCloser) (*compressReader, error) {
 	zr, err := gzip.NewReader(r)
 	if err != nil {
@@ -75,10 +82,12 @@ func newCompressReader(r io.ReadCloser) (*compressReader, error) {
 	}, nil
 }
 
+// Декмпрессует поток байт
 func (c *compressReader) Read(p []byte) (int, error) {
 	return c.zr.Read(p)
 }
 
+// Закрытие Reader
 func (c *compressReader) Close() error {
 	if err := c.r.Close(); err != nil {
 		return err
@@ -86,6 +95,7 @@ func (c *compressReader) Close() error {
 	return c.zr.Close()
 }
 
+// Middleware для компрессии/декомпрессии
 func WithCompress(h http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ow := w

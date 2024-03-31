@@ -11,11 +11,13 @@ import (
 	"github.com/AlexTerra21/shortener/internal/app/storage/storagers"
 )
 
+// Структура для системы асинхронного удаления
 type Async struct {
-	delChan chan storagers.UsersURL
-	storage *storage.Storage
+	delChan chan storagers.UsersURL // Канал, куда помещаются записи подлежащие удалению
+	storage *storage.Storage        // Ссылка на хранилище
 }
 
+// Инициализация системы асинхронного удаления
 func NewAsync(s *storage.Storage) *Async {
 	instance := &Async{
 		delChan: make(chan storagers.UsersURL, 1024),
@@ -27,6 +29,7 @@ func NewAsync(s *storage.Storage) *Async {
 	return instance
 }
 
+// Асинхронный метод удаления URL из базы
 func (a *Async) delURLs() {
 	ticker := time.NewTicker(10 * time.Second)
 
@@ -55,6 +58,7 @@ func (a *Async) delURLs() {
 	}
 }
 
+// Метод помещающий объекты для удаления в канал
 func (a *Async) Push(del storagers.UsersURL) {
 	a.delChan <- del
 }

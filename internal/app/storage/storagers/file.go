@@ -14,11 +14,13 @@ import (
 	"github.com/AlexTerra21/shortener/internal/app/models"
 )
 
+// Структура для хранения данных в файле
 type File struct {
 	data  []ShortenedURL
 	fname string
 }
 
+// Инициализация хранилища
 func (f *File) New(fName string) error {
 	f.data = make([]ShortenedURL, 0)
 	f.fname = fName
@@ -28,9 +30,11 @@ func (f *File) New(fName string) error {
 	return nil
 }
 
+// Закрытие хранилища
 func (f *File) Close() {
 }
 
+// Добавление данных в хранилище
 func (f *File) Set(_ context.Context, index string, value string, userID int) error {
 	newURL := ShortenedURL{
 		UUID:        userID,
@@ -49,6 +53,7 @@ func (f *File) Set(_ context.Context, index string, value string, userID int) er
 	return nil
 }
 
+// Добавление пакета данных в хранилище
 func (f *File) BatchSet(_ context.Context, batchValues *[]models.BatchStore, userID int) error {
 	newURLs := make([]ShortenedURL, 0)
 	for _, url := range *batchValues {
@@ -70,6 +75,7 @@ func (f *File) BatchSet(_ context.Context, batchValues *[]models.BatchStore, use
 	return nil
 }
 
+// Получение данных из хранилища
 func (f *File) Get(_ context.Context, idxURL string) (string, bool, error) {
 	idx := slices.IndexFunc(f.data, func(c ShortenedURL) bool { return c.IdxShortURL == idxURL })
 	if idx == -1 {
@@ -78,6 +84,7 @@ func (f *File) Get(_ context.Context, idxURL string) (string, bool, error) {
 	return f.data[idx].OriginalURL, f.data[idx].DeletedFlag, nil
 }
 
+// Чтение из файла
 func (f *File) readFromFile() error {
 	file, err := os.OpenFile(f.fname, os.O_RDONLY|os.O_CREATE, 0666)
 	if err != nil {
@@ -99,6 +106,7 @@ func (f *File) readFromFile() error {
 	return nil
 }
 
+// Запись в файл
 func (f *File) writeValueToFile(values *[]ShortenedURL) error {
 	file, err := os.OpenFile(f.fname, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {

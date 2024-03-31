@@ -11,18 +11,22 @@ import (
 	"github.com/AlexTerra21/shortener/internal/app/models"
 )
 
+// Структура для хранения данных в памяти
 type Memory struct {
 	data []ShortenedURL
 }
 
+// Инициализация хранилища
 func (m *Memory) New(string) error {
 	m.data = make([]ShortenedURL, 0)
 	return nil
 }
 
+// Закрытие хранилища
 func (m *Memory) Close() {
 }
 
+// Добавление данных в хранилище
 func (m *Memory) Set(_ context.Context, index string, value string, userID int) error {
 	newURL := ShortenedURL{
 		UUID:        userID,
@@ -35,6 +39,7 @@ func (m *Memory) Set(_ context.Context, index string, value string, userID int) 
 	return nil
 }
 
+// Добавление пакета данных в хранилище
 func (m *Memory) BatchSet(_ context.Context, batchValues *[]models.BatchStore, userID int) error {
 	for _, url := range *batchValues {
 		newURL := ShortenedURL{
@@ -49,6 +54,7 @@ func (m *Memory) BatchSet(_ context.Context, batchValues *[]models.BatchStore, u
 	return nil
 }
 
+// Получение данных из хранилища
 func (m *Memory) Get(_ context.Context, idxURL string) (string, bool, error) {
 	idx := slices.IndexFunc(m.data, func(c ShortenedURL) bool { return c.IdxShortURL == idxURL })
 	if idx == -1 {
