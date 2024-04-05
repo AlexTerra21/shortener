@@ -52,7 +52,7 @@ func run() (err error) {
 			log.Fatal(err)
 		}
 	}()
-	go http.ListenAndServe("0.0.0.0:8080", nil)
+	// go http.ListenAndServe("0.0.0.0:8080", nil)
 	sig := <-signalCh
 	logger.Log().Sugar().Infof("Received signal: %v\n", sig)
 
