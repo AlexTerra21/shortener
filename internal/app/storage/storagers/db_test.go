@@ -15,7 +15,7 @@ func BenchmarkInsert(b *testing.B) {
 		b.Log(err.Error())
 	}
 
-	countTimes := 1000
+	countTimes := b.N
 	urls := make([]ShortenedURL, countTimes)
 
 	for i := 0; i < countTimes; i++ {

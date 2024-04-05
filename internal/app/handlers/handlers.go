@@ -1,12 +1,15 @@
 package handlers
 
 import (
-	"encoding/json"
+	// "encoding/json"
 	"errors"
 	"io"
 	"net/http"
 
+	_ "net/http/pprof" // подключаем пакет pprof
+
 	"github.com/go-chi/chi"
+	"github.com/goccy/go-json"
 	"go.uber.org/zap"
 
 	"github.com/AlexTerra21/shortener/internal/app/auth"

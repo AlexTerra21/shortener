@@ -63,7 +63,7 @@ func (d *DB) BatchSet(ctx context.Context, batchValues *[]models.BatchStore, use
 			DeletedFlag: false,
 		}
 		newURLs = append(newURLs, newURL)
-		logger.Log().Debug("Storage_Set_File", zap.Any("new_url", newURL))
+		logger.Log().Debug("Storage_Set_DB", zap.Any("new_url", newURL))
 	}
 	err := d.insertURLs(ctx, &newURLs)
 	if err != nil {

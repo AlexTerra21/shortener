@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	_ "net/http/pprof" // подключаем пакет pprof
 	"os"
 	"os/signal"
 	"syscall"
@@ -51,6 +52,7 @@ func run() (err error) {
 			log.Fatal(err)
 		}
 	}()
+	go http.ListenAndServe("0.0.0.0:8080", nil)
 	sig := <-signalCh
 	logger.Log().Sugar().Infof("Received signal: %v\n", sig)
 
