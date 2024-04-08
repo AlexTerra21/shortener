@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	_ "net/http/pprof" // подключаем пакет pprof
 	"os"
 	"os/signal"
 	"syscall"
@@ -18,6 +19,7 @@ import (
 // ./cmd/shortener/shortener.exe -a=:8091 -b=http://localhost:8091 -l debug
 // ./cmd/shortener/shortener.exe -a=:8091 -b=http://localhost:8091 -l debug -f ./tmp/short-url-db.json
 // ./cmd/shortener/shortener.exe -a=:8091 -b=http://localhost:8091 -l debug -d "host=localhost user=shortner password=userpassword dbname=short_urls sslmode=disable"
+//
 // функция main вызывается автоматически при запуске приложения
 func main() {
 	if err := run(); err != nil {
@@ -50,6 +52,7 @@ func run() (err error) {
 			log.Fatal(err)
 		}
 	}()
+	// go http.ListenAndServe("0.0.0.0:8080", nil)
 	sig := <-signalCh
 	logger.Log().Sugar().Infof("Received signal: %v\n", sig)
 

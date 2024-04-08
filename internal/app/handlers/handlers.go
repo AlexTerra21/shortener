@@ -1,12 +1,15 @@
 package handlers
 
 import (
-	"encoding/json"
+	// "encoding/json"
 	"errors"
 	"io"
 	"net/http"
 
+	_ "net/http/pprof" // подключаем пакет pprof
+
 	"github.com/go-chi/chi"
+	"github.com/goccy/go-json"
 	"go.uber.org/zap"
 
 	"github.com/AlexTerra21/shortener/internal/app/auth"
@@ -19,6 +22,7 @@ import (
 	"github.com/AlexTerra21/shortener/internal/app/utils"
 )
 
+// Главный роутер
 func MainRouter(c *config.Config) chi.Router {
 	r := chi.NewRouter()
 	r.Post("/", auth.WithAuth(logger.WithLogging(compress.WithCompress(storeURL(c)))))
@@ -77,6 +81,7 @@ func shortenURL(c *config.Config) http.HandlerFunc {
 	}
 }
 
+// Deprecated
 func storeURL(c *config.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID := r.Context().Value(auth.UserIDKey).(int)
@@ -104,6 +109,7 @@ func storeURL(c *config.Config) http.HandlerFunc {
 		_, _ = w.Write([]byte(resp))
 	}
 }
+
 func getURL(c *config.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "id")

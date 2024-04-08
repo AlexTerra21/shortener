@@ -17,14 +17,17 @@ type claims struct {
 	UserID int
 }
 
+// Тип ключа для передачи через контекст
 type ContextKey string
 
+// Константы
 const (
-	tokenExp             = time.Hour * 3
-	secretKey            = "supersecretkey"
-	UserIDKey ContextKey = "userID"
+	tokenExp             = time.Hour * 3    // время жизни токена
+	secretKey            = "supersecretkey" // ключ для создания токена
+	UserIDKey ContextKey = "userID"         // ключ для передачи токена через контекст
 )
 
+// Middleware для аутентификации
 func WithAuth(h http.Handler) http.HandlerFunc {
 	authFunc := func(w http.ResponseWriter, r *http.Request) {
 		needAuthString := false
@@ -83,6 +86,7 @@ func BuildJWTString(userID int) (string, error) {
 	return tokenString, nil
 }
 
+// Получение UserID по токену
 func GetUserID(tokenString string) int {
 	claims := &claims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims,
@@ -103,6 +107,9 @@ func GetUserID(tokenString string) int {
 	return claims.UserID
 }
 
+// Проверка корректности токена
+// В случае неудачи возвращается -1
+// В случае успеха - userID
 func CheckAuth(r *http.Request) int {
 	token, err := r.Cookie("Authorization")
 	var userID int

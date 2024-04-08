@@ -5,6 +5,7 @@ import (
 	"github.com/AlexTerra21/shortener/internal/app/storage/storagers"
 )
 
+// Инициализация хранилища
 func NewStorage(fname string, dbstr string) (*Storage, error) {
 	var stor Storage
 	if dbstr != "" {
