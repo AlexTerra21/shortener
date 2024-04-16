@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	_ "net/http/pprof" // подключаем пакет pprof
@@ -15,6 +16,14 @@ import (
 	"github.com/AlexTerra21/shortener/internal/app/logger"
 )
 
+var (
+	buildVersion = "N/A"
+	buildDate    = "N/A"
+	buildCommit  = "N/A"
+)
+
+// go build -o cmd/shortener/shortener.exe -ldflags "-X main.buildVersion=v1.20.0 -X 'main.buildDate=$(date +'%Y/%m/%d %H:%M:%S')' -X 'main.buildCommit=$(git log -1 | grep commit)'" cmd/shortener/*.go
+
 // ./cmd/shortener/shortener.exe --help
 // ./cmd/shortener/shortener.exe -a=:8091 -b=http://localhost:8091 -l debug
 // ./cmd/shortener/shortener.exe -a=:8091 -b=http://localhost:8091 -l debug -f ./tmp/short-url-db.json
@@ -22,6 +31,11 @@ import (
 //
 // функция main вызывается автоматически при запуске приложения
 func main() {
+
+	fmt.Printf("Build version: %s\n", buildVersion)
+	fmt.Printf("Build date: %s\n", buildDate)
+	fmt.Printf("Build commit: %s\n", buildCommit)
+
 	if err := run(); err != nil {
 		panic(err)
 	}
