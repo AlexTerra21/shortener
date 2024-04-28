@@ -16,6 +16,7 @@ type Config struct {
 	logLevel        string
 	fileStoragePath string
 	dbConnectString string
+	enableHTTPS     bool
 	Storage         *storage.Storage
 	DelQueue        *async.Async
 }
@@ -67,6 +68,11 @@ func (c *Config) GetLogLevel() string {
 	return c.logLevel
 }
 
+// Получение признака разрешения HTTPS
+func (c *Config) GetEnableHTTPS() bool {
+	return c.enableHTTPS
+}
+
 // Печать основных параметров конфигурации
 func (c *Config) Print() {
 	fmt.Printf("Server address: %s\n", c.serverAddress)
@@ -81,6 +87,7 @@ func (c *Config) ParseFlags() {
 	logLevel := flag.String("l", "info", "log level")
 	fileStoragePath := flag.String("f", "", "file name for url save")
 	dbConnectString := flag.String("d", "", "db connection string")
+	enableHTTPS := flag.Bool("s", false, "enable HTTPS")
 
 	flag.Parse()
 	if serverAddressEnv := os.Getenv("SERVER_ADDRESS"); serverAddressEnv != "" {
@@ -98,9 +105,13 @@ func (c *Config) ParseFlags() {
 	if dbConnectStringEnv := os.Getenv("DATABASE_DSN"); dbConnectStringEnv != "" {
 		fileStoragePath = &dbConnectStringEnv
 	}
+	if enableHTTPSEnv := os.Getenv("ENABLE_HTTPS"); enableHTTPSEnv != "" {
+		fileStoragePath = &enableHTTPSEnv
+	}
 	c.serverAddress = *serverAddress
 	c.baseURL = *baseURL
 	c.logLevel = *logLevel
 	c.fileStoragePath = *fileStoragePath
 	c.dbConnectString = *dbConnectString
+	c.enableHTTPS = *enableHTTPS
 }
