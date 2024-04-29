@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	_ "net/http/pprof" // подключаем пакет pprof
 	"os"
 	"os/signal"
@@ -63,7 +64,7 @@ func run() (err error) {
 	signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
-		if err := server.Start(); err != nil {
+		if err := server.Start(); err != http.ErrServerClosed && err != nil {
 			logger.Log().Sugar().Errorf("Server error: %v", err)
 		}
 	}()
