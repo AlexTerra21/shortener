@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	_ "net/http/pprof" // подключаем пакет pprof
 	"os"
 	"os/signal"
@@ -65,12 +64,12 @@ func run() (err error) {
 
 	go func() {
 		if err := server.Start(); err != nil {
-			log.Fatal(err)
+			logger.Log().Sugar().Errorf("Server error: %v", err)
 		}
 	}()
 	// go http.ListenAndServe("0.0.0.0:8080", nil)
 	sig := <-signalCh
-	logger.Log().Sugar().Infof("Received signal: %v\n", sig)
+	logger.Log().Sugar().Infof("Received signal: %v", sig)
 
 	return nil
 }
