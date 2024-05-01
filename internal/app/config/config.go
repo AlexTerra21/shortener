@@ -39,6 +39,10 @@ func NewConfig() (*Config, error) {
 
 	config.ConfigPath = *flagConfigPath
 
+	if configPathEnv := os.Getenv("CONFIG"); configPathEnv != "" {
+		config.ConfigPath = configPathEnv
+	}
+
 	configFromFile, err := config.ReadConFile(config.ConfigPath)
 	if err != nil {
 		return &Config{}, err
