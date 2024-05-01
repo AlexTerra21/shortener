@@ -32,7 +32,7 @@ func NewHTTPSServer(config *config.Config) (*HTTPSServer, error) {
 
 	server := &HTTPSServer{
 		https: &http.Server{
-			Addr:      config.GetServerAddress(),
+			Addr:      config.ServerAddress,
 			Handler:   handlers.MainRouter(config),
 			TLSConfig: &tlsConfig,
 		},

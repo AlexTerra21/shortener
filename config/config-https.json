@@ -1,8 +1,8 @@
 {
-    "server_address": ":8091", 
-    "base_url": "http://localhost:8091",
+    "server_address": ":443", 
+    "base_url": "http://localhost:443",
     "log_level": "debug", 
     "file_storage_path": "./tmp/short-url-db.json", 
     "db_connect_string": "host=localhost user=shortner password=userpassword dbname=short_urls sslmode=disable", 
-    "enable_https": false
+    "enable_https": true 
 }

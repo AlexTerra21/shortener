@@ -20,7 +20,7 @@ type HTTPServer struct {
 func NewHTTPServer(config *config.Config) (*HTTPServer, error) {
 	server := &HTTPServer{
 		http: &http.Server{
-			Addr:    config.GetServerAddress(),
+			Addr:    config.ServerAddress,
 			Handler: handlers.MainRouter(config),
 		},
 	}

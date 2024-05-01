@@ -62,7 +62,7 @@ func shortenURL(c *config.Config) http.HandlerFunc {
 				db, ok := c.Storage.S.(*storagers.DB)
 				if ok {
 					id, _ := db.GetShortURL(r.Context(), request.URL, userID)
-					response.Result = c.GetBaseURL() + "/" + id
+					response.Result = c.BaseURL + "/" + id
 				}
 			} else {
 				w.WriteHeader(http.StatusInternalServerError)
@@ -70,7 +70,7 @@ func shortenURL(c *config.Config) http.HandlerFunc {
 			}
 		} else {
 			w.WriteHeader(http.StatusCreated) // устанавливаем код 201
-			response.Result = c.GetBaseURL() + "/" + id
+			response.Result = c.BaseURL + "/" + id
 		}
 
 		encoder := json.NewEncoder(w)
@@ -96,7 +96,7 @@ func storeURL(c *config.Config) http.HandlerFunc {
 				db, ok := c.Storage.S.(*storagers.DB)
 				if ok {
 					id, _ := db.GetShortURL(r.Context(), string(url), userID)
-					resp = c.GetBaseURL() + "/" + id
+					resp = c.BaseURL + "/" + id
 				}
 			} else {
 				w.WriteHeader(http.StatusInternalServerError)
@@ -104,7 +104,7 @@ func storeURL(c *config.Config) http.HandlerFunc {
 			}
 		} else {
 			w.WriteHeader(http.StatusCreated) // устанавливаем код 201
-			resp = c.GetBaseURL() + "/" + id
+			resp = c.BaseURL + "/" + id
 		}
 		_, _ = w.Write([]byte(resp))
 	}
@@ -166,7 +166,7 @@ func batch(c *config.Config) http.HandlerFunc {
 			id := utils.RandSeq(8)
 			resp := models.BatchResp{
 				CorrelationID: value.CorrelationID,
-				ShortURL:      c.GetBaseURL() + "/" + id,
+				ShortURL:      c.BaseURL + "/" + id,
 			}
 			batch := models.BatchStore{
 				OriginalURL: value.OriginalURL,
@@ -210,7 +210,7 @@ func urls(c *config.Config) http.HandlerFunc {
 			_, _ = w.Write([]byte("Database not supported"))
 			return
 		}
-		response, err := db.GetAll(r.Context(), c.GetBaseURL(), userID)
+		response, err := db.GetAll(r.Context(), c.BaseURL, userID)
 		if err != nil {
 			logger.Log().Debug("error get all urls from DB", zap.Error(err))
 			w.Header().Set("content-type", "application/text")

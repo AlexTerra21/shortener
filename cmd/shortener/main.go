@@ -26,6 +26,7 @@ var (
 // ./cmd/shortener/shortener.exe -a=:8091 -b=http://localhost:8091 -l debug -f ./tmp/short-url-db.json
 // ./cmd/shortener/shortener.exe -a=:8091 -b=http://localhost:8091 -l debug -d "host=localhost user=shortner password=userpassword dbname=short_urls sslmode=disable"
 // ./cmd/shortener/shortener.exe -a=:443 -s -b=http://localhost:443 -l debug -d "host=localhost user=shortner password=userpassword dbname=short_urls sslmode=disable"
+// ./cmd/shortener/shortener.exe -c ./config/config-http.json
 //
 // функция main вызывается автоматически при запуске приложения
 func main() {
@@ -41,10 +42,13 @@ func main() {
 
 // функция run будет полезна при инициализации зависимостей сервера перед запуском
 func run() (err error) {
-	config := config.NewConfig()
-	config.ParseFlags()
+	config, err := config.NewConfig()
+	if err != nil {
+		// logger.Log().Error("Read config error: %v", err)
+		return err
+	}
 	config.Print()
-	if err = logger.Initialize(config.GetLogLevel()); err != nil {
+	if err = logger.Initialize(config.LogLevel); err != nil {
 		return err
 	}
 	if err = config.InitStorage(); err != nil {

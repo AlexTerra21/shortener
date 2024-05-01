@@ -1,9 +1,11 @@
 package config
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/AlexTerra21/shortener/internal/app/async"
 	"github.com/AlexTerra21/shortener/internal/app/storage"
@@ -11,25 +13,57 @@ import (
 
 // Структура для хранения конфигурации приложения
 type Config struct {
-	serverAddress   string
-	baseURL         string
-	logLevel        string
-	fileStoragePath string
-	dbConnectString string
-	enableHTTPS     bool
+	ServerAddress   string `json:"server_address"`
+	BaseURL         string `json:"base_url"`
+	LogLevel        string `json:"log_level"`
+	FileStoragePath string `json:"file_storage_path"`
+	DBConnectString string `json:"db_connect_string"`
+	EnableHTTPS     bool   `json:"enable_https"`
+	ConfigPath      string
 	Storage         *storage.Storage
 	DelQueue        *async.Async
 }
 
 // Инициализация конфигурации
-func NewConfig() *Config {
-	return &Config{}
+func NewConfig() (*Config, error) {
+	config := &Config{}
+	// Обработка флагов командной строки и занесение в параметры конфигурации
+	flagServerAddress := flag.String("a", "", "address and port to run server")
+	flagBaseURL := flag.String("b", "", "address and port to return")
+	flagLogLevel := flag.String("l", "", "log level")
+	flagFileStoragePath := flag.String("f", "", "file name for url save")
+	flagDBConnectString := flag.String("d", "", "db connection string")
+	flagEnableHTTPS := flag.String("s", "", "enable HTTPS")
+	flagConfigPath := flag.String("c", "", "config path")
+	flag.Parse()
+
+	config.ConfigPath = *flagConfigPath
+
+	configFromFile, err := config.ReadConFile(config.ConfigPath)
+	if err != nil {
+		return &Config{}, err
+	}
+
+	config.BaseURL = priorityString(os.Getenv("BASE_URL"), *flagBaseURL, configFromFile.BaseURL, "http://localhost:8080")
+	config.DBConnectString = priorityString(os.Getenv("DATABASE_DSN"), *flagDBConnectString, configFromFile.DBConnectString)
+	config.FileStoragePath = priorityString(os.Getenv("FILE_STORAGE_PATH"), *flagFileStoragePath, configFromFile.FileStoragePath)
+	config.LogLevel = priorityString(os.Getenv("LOG_LEVEL"), *flagLogLevel, configFromFile.LogLevel, "info")
+	config.ServerAddress = priorityString(os.Getenv("SERVER_ADDRESS"), *flagServerAddress, configFromFile.ServerAddress, ":8080")
+	enableHTTPS := priorityString(os.Getenv("ENABLE_HTTPS"), *flagEnableHTTPS, strconv.FormatBool(configFromFile.EnableHTTPS), "false")
+
+	if boolValue, err := strconv.ParseBool(enableHTTPS); err == nil {
+		config.EnableHTTPS = boolValue
+	} else {
+		config.EnableHTTPS = false
+	}
+
+	return config, nil
 }
 
 // Инициализация хранилища
 func (c *Config) InitStorage() (err error) {
 	// logger.Log().Info(c.dbConnectString)
-	c.Storage, err = storage.NewStorage(c.fileStoragePath, c.dbConnectString)
+	c.Storage, err = storage.NewStorage(c.FileStoragePath, c.DBConnectString)
 	return
 }
 
@@ -38,80 +72,52 @@ func (c *Config) InitAsync() {
 	c.DelQueue = async.NewAsync(c.Storage)
 }
 
-// Получение параметра конфигурации fileStoragePath
-func (c *Config) GetFileStoragePath() string {
-	return c.fileStoragePath
-}
-
 // Присваивание параметра конфигурации serverAddress
 func (c *Config) SetServerAddress(s string) {
-	c.serverAddress = s
-}
-
-// Получение параметра конфигурации serverAddress
-func (c *Config) GetServerAddress() string {
-	return c.serverAddress
+	c.ServerAddress = s
 }
 
 // Присваивание параметра конфигурации baseURL
 func (c *Config) SetBaseURL(s string) {
-	c.baseURL = s
-}
-
-// Получение параметра конфигурации baseURL
-func (c *Config) GetBaseURL() string {
-	return c.baseURL
-}
-
-// Получение параметра конфигурации logLevel
-func (c *Config) GetLogLevel() string {
-	return c.logLevel
-}
-
-// Получение признака разрешения HTTPS
-func (c *Config) GetEnableHTTPS() bool {
-	return c.enableHTTPS
+	c.BaseURL = s
 }
 
 // Печать основных параметров конфигурации
 func (c *Config) Print() {
-	fmt.Printf("Server address: %s\n", c.serverAddress)
-	fmt.Printf("Base URL: %s\n", c.baseURL)
-	fmt.Printf("Log level: %s\n", c.logLevel)
+	fmt.Printf("Server address: %s\n", c.ServerAddress)
+	fmt.Printf("Base URL: %s\n", c.BaseURL)
+	fmt.Printf("Log level: %s\n", c.LogLevel)
+	fmt.Printf("DB connect string: %s\n", c.DBConnectString)
+	fmt.Printf("File storage path: %s\n", c.FileStoragePath)
+	fmt.Printf("Enable HTTPS: %v\n", c.EnableHTTPS)
+
 }
 
-// Обработка флагов командной строки и занесение в параметры конфигурации
-func (c *Config) ParseFlags() {
-	serverAddress := flag.String("a", ":8080", "address and port to run server")
-	baseURL := flag.String("b", "http://localhost:8080", "address and port to return")
-	logLevel := flag.String("l", "info", "log level")
-	fileStoragePath := flag.String("f", "", "file name for url save")
-	dbConnectString := flag.String("d", "", "db connection string")
-	enableHTTPS := flag.Bool("s", false, "enable HTTPS")
+// Выбор первой не пустой строки по порядку приоритета
+func priorityString(vars ...string) string {
+	for _, v := range vars {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
+}
 
-	flag.Parse()
-	if serverAddressEnv := os.Getenv("SERVER_ADDRESS"); serverAddressEnv != "" {
-		serverAddress = &serverAddressEnv
+// Чтение файла конфигурации
+func (c *Config) ReadConFile(path string) (Config, error) {
+	if path == "" {
+		return Config{}, nil
 	}
-	if baseURLEnv := os.Getenv("BASE_URL"); baseURLEnv != "" {
-		baseURL = &baseURLEnv
+
+	fileConfig, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return Config{}, fmt.Errorf("can not read config from - %s", path)
+		}
+		return Config{}, err
 	}
-	if logLevelEnv := os.Getenv("LOG_LEVEL"); logLevelEnv != "" {
-		logLevel = &logLevelEnv
-	}
-	if fileStoragePathEnv := os.Getenv("FILE_STORAGE_PATH"); fileStoragePathEnv != "" {
-		fileStoragePath = &fileStoragePathEnv
-	}
-	if dbConnectStringEnv := os.Getenv("DATABASE_DSN"); dbConnectStringEnv != "" {
-		fileStoragePath = &dbConnectStringEnv
-	}
-	if enableHTTPSEnv := os.Getenv("ENABLE_HTTPS"); enableHTTPSEnv != "" {
-		fileStoragePath = &enableHTTPSEnv
-	}
-	c.serverAddress = *serverAddress
-	c.baseURL = *baseURL
-	c.logLevel = *logLevel
-	c.fileStoragePath = *fileStoragePath
-	c.dbConnectString = *dbConnectString
-	c.enableHTTPS = *enableHTTPS
+
+	config := Config{}
+	err = json.Unmarshal(fileConfig, &config)
+	return config, err
 }

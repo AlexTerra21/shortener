@@ -12,7 +12,7 @@ type Server interface {
 
 // Конструктор для создания сервера
 func NewServer(config *config.Config) (Server, error) {
-	if config.GetEnableHTTPS() {
+	if config.EnableHTTPS {
 		return NewHTTPSServer(config)
 	} else {
 		return NewHTTPServer(config)
