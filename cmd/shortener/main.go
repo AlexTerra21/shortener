@@ -26,7 +26,7 @@ var (
 // ./cmd/shortener/shortener.exe -a=:8091 -b=http://localhost:8091 -l debug -f ./tmp/short-url-db.json
 // ./cmd/shortener/shortener.exe -a=:8091 -b=http://localhost:8091 -l debug -d "host=localhost user=shortner password=userpassword dbname=short_urls sslmode=disable"
 // ./cmd/shortener/shortener.exe -a=:443 -s -b=http://localhost:443 -l debug -d "host=localhost user=shortner password=userpassword dbname=short_urls sslmode=disable"
-// ./cmd/shortener/shortener.exe -c ./config/config-http.json
+// ./cmd/shortener/shortener.exe -c ./config/config.json
 //
 // функция main вызывается автоматически при запуске приложения
 func main() {
@@ -65,7 +65,7 @@ func run() (err error) {
 	config.InitAsync()
 
 	signalCh := make(chan os.Signal, 1)
-	signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
 	go func() {
 		if err := server.Start(); err != http.ErrServerClosed && err != nil {
