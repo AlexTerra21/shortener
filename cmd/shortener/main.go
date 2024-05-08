@@ -70,6 +70,7 @@ func run() (err error) {
 	go func() {
 		if err := server.Start(); err != http.ErrServerClosed && err != nil {
 			logger.Log().Sugar().Errorf("Server error: %v", err)
+			signalCh <- syscall.SIGTERM
 		}
 	}()
 	// go http.ListenAndServe("0.0.0.0:8080", nil)

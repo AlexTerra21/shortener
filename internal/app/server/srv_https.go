@@ -22,7 +22,7 @@ func NewHTTPSServer(config *config.Config) (*HTTPSServer, error) {
 
 	certificate, err := GenerateCertificate()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	tlsConfig := tls.Config{
