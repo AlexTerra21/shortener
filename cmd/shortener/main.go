@@ -2,18 +2,15 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	_ "net/http/pprof" // подключаем пакет pprof
 	"os"
 	"os/signal"
 	"syscall"
 
-	"go.uber.org/zap"
-
 	"github.com/AlexTerra21/shortener/internal/app/config"
-	"github.com/AlexTerra21/shortener/internal/app/handlers"
 	"github.com/AlexTerra21/shortener/internal/app/logger"
+	"github.com/AlexTerra21/shortener/internal/app/server"
 )
 
 var (
@@ -28,6 +25,8 @@ var (
 // ./cmd/shortener/shortener.exe -a=:8091 -b=http://localhost:8091 -l debug
 // ./cmd/shortener/shortener.exe -a=:8091 -b=http://localhost:8091 -l debug -f ./tmp/short-url-db.json
 // ./cmd/shortener/shortener.exe -a=:8091 -b=http://localhost:8091 -l debug -d "host=localhost user=shortner password=userpassword dbname=short_urls sslmode=disable"
+// ./cmd/shortener/shortener.exe -a=:443 -s -b=http://localhost:443 -l debug -d "host=localhost user=shortner password=userpassword dbname=short_urls sslmode=disable"
+// ./cmd/shortener/shortener.exe -c ./config/config.json
 //
 // функция main вызывается автоматически при запуске приложения
 func main() {
@@ -43,10 +42,13 @@ func main() {
 
 // функция run будет полезна при инициализации зависимостей сервера перед запуском
 func run() (err error) {
-	config := config.NewConfig()
-	config.ParseFlags()
+	config, err := config.NewConfig()
+	if err != nil {
+		// logger.Log().Error("Read config error: %v", err)
+		return err
+	}
 	config.Print()
-	if err = logger.Initialize(config.GetLogLevel()); err != nil {
+	if err = logger.Initialize(config.LogLevel); err != nil {
 		return err
 	}
 	if err = config.InitStorage(); err != nil {
@@ -54,21 +56,26 @@ func run() (err error) {
 	}
 	defer config.Storage.S.Close()
 
+	server, err := server.NewServer(config)
+	if err != nil {
+		return err
+	}
+	defer server.Stop()
+
 	config.InitAsync()
 
 	signalCh := make(chan os.Signal, 1)
-	signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
 	go func() {
-		logger.Log().Info("Running server", zap.String("address", config.GetServerAddress()))
-		err := http.ListenAndServe(config.GetServerAddress(), handlers.MainRouter(config))
-		if err != nil {
-			log.Fatal(err)
+		if err := server.Start(); err != http.ErrServerClosed && err != nil {
+			logger.Log().Sugar().Errorf("Server error: %v", err)
+			signalCh <- syscall.SIGTERM
 		}
 	}()
 	// go http.ListenAndServe("0.0.0.0:8080", nil)
 	sig := <-signalCh
-	logger.Log().Sugar().Infof("Received signal: %v\n", sig)
+	logger.Log().Sugar().Infof("Received signal: %v", sig)
 
 	return nil
 }

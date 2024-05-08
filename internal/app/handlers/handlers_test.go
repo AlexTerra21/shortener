@@ -18,7 +18,7 @@ import (
 
 func TestHandlers_storeURL_getURL(t *testing.T) {
 	// Инициализация сервисов
-	config := config.NewConfig()
+	config := &config.Config{}
 	config.Storage, _ = storage.NewStorage("", "")
 	config.SetServerAddress(":8080")
 	config.SetBaseURL("http://localhost:8080")
@@ -59,7 +59,7 @@ func TestHandlers_storeURL_getURL(t *testing.T) {
 }
 
 func TestHandlers_MainHandler(t *testing.T) {
-	config := config.NewConfig()
+	config := &config.Config{}
 	config.SetServerAddress(":8080")
 	config.SetBaseURL("http://localhost:8080")
 	config.Storage, _ = storage.NewStorage("", "")
@@ -94,7 +94,7 @@ func TestHandlers_MainHandler(t *testing.T) {
 }
 
 func TestHandlers_shortenURL(t *testing.T) {
-	config := config.NewConfig()
+	config := &config.Config{}
 	config.SetServerAddress(":8080")
 	config.SetBaseURL("http://localhost:8080")
 	config.Storage, _ = storage.NewStorage("", "")
@@ -138,7 +138,7 @@ func TestHandlers_shortenURL(t *testing.T) {
 }
 
 func TestHandlers_compression(t *testing.T) {
-	config := config.NewConfig()
+	config := &config.Config{}
 	config.SetServerAddress(":8080")
 	config.SetBaseURL("http://localhost:8080")
 	config.Storage, _ = storage.NewStorage("", "")
@@ -200,7 +200,7 @@ func TestHandlers_compression(t *testing.T) {
 }
 
 func Test_batch(t *testing.T) {
-	config := config.NewConfig()
+	config := &config.Config{}
 	config.SetServerAddress(":8080")
 	config.SetBaseURL("http://localhost:8080")
 	config.Storage, _ = storage.NewStorage("", "")
