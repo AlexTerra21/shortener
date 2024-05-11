@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"slices"
+	"sync"
 
 	"go.uber.org/zap"
 
@@ -18,12 +19,14 @@ import (
 type File struct {
 	data  []ShortenedURL
 	fname string
+	mutex sync.RWMutex
 }
 
 // Инициализация хранилища
 func (f *File) New(fName string) error {
 	f.data = make([]ShortenedURL, 0)
 	f.fname = fName
+	f.mutex = sync.RWMutex{}
 	if err := f.readFromFile(); err != nil {
 		return err
 	}
@@ -128,4 +131,20 @@ func (f *File) writeValueToFile(values *[]ShortenedURL) error {
 	_, err = file.Write(valByte)
 	return err
 
+}
+
+// Получение статистики по хранилищу
+func (f *File) Stats(ctx context.Context) (models.StatsResp, error) {
+	uniqUsersIDs := make(map[int]bool)
+
+	f.mutex.RLock()
+	defer f.mutex.RUnlock()
+
+	for _, shortURL := range f.data {
+		uniqUsersIDs[shortURL.UUID] = true
+	}
+	return models.StatsResp{
+		UrlsCount: len(f.data),
+		UserCount: len(uniqUsersIDs),
+	}, nil
 }

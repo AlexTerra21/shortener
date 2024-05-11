@@ -16,6 +16,7 @@ import (
 	"github.com/AlexTerra21/shortener/internal/app/compress"
 	"github.com/AlexTerra21/shortener/internal/app/config"
 	"github.com/AlexTerra21/shortener/internal/app/errs"
+	"github.com/AlexTerra21/shortener/internal/app/ipchecker"
 	"github.com/AlexTerra21/shortener/internal/app/logger"
 	"github.com/AlexTerra21/shortener/internal/app/models"
 	"github.com/AlexTerra21/shortener/internal/app/storage/storagers"
@@ -32,6 +33,7 @@ func MainRouter(c *config.Config) chi.Router {
 	r.Delete("/api/user/urls", auth.WithAuth(logger.WithLogging(compress.WithCompress(delete(c)))))
 	r.Get("/{id}", logger.WithLogging(getURL(c)))
 	r.Get("/ping", logger.WithLogging(ping(c)))
+	r.Get("/api/internal/stats", logger.WithLogging(stats(c)))
 	r.MethodNotAllowed(notAllowedHandler)
 	return r
 }
@@ -260,5 +262,41 @@ func delete(c *config.Config) http.HandlerFunc {
 			})
 		}
 		w.WriteHeader(http.StatusAccepted)
+	}
+}
+
+func stats(c *config.Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		isTrusted, err := ipchecker.CheckIP(c, r)
+		if err != nil {
+			logger.Log().Debug("cannot check trusted subnet", zap.Error(err))
+			http.Error(w, err.Error(), http.StatusForbidden) // 403
+			return
+		}
+
+		if !isTrusted {
+			logger.Log().Debug("ip forbidden", zap.Error(err))
+			http.Error(w, "forbidden", http.StatusForbidden) // 403
+			return
+		}
+
+		response, err := c.Storage.S.Stats(r.Context())
+		if err != nil {
+			logger.Log().Debug("error get stats from DB", zap.Error(err))
+			w.Header().Set("content-type", "application/text")
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(err.Error()))
+			return
+		}
+
+		w.Header().Set("content-type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		encoder := json.NewEncoder(w)
+		if err := encoder.Encode(response); err != nil {
+			logger.Log().Debug("error encoding response", zap.Error(err))
+			return
+		}
+
 	}
 }
