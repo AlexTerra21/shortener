@@ -284,5 +284,9 @@ func (d *DB) Stats(ctx context.Context) (models.StatsResp, error) {
 			return models.StatsResp{}, err
 		}
 	}
+	// необходимо проверить ошибки уровня курсора
+	if err = rows.Err(); err != nil {
+		return models.StatsResp{}, err
+	}
 	return stats, nil
 }
