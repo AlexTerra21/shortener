@@ -27,3 +27,9 @@ type BatchStore struct {
 	IdxShortURL string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 }
+
+// Модель для хендлера статистики
+type StatsResp struct {
+	UrlsCount int `json:"urls"`
+	UserCount int `json:"users"`
+}

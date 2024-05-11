@@ -269,3 +269,24 @@ func (d *DB) GetAll(ctx context.Context, shortURLPrefix string, userID int) ([]m
 	}
 	return allURLs, nil
 }
+
+// Получение статистики по хранилищу
+func (d *DB) Stats(ctx context.Context) (models.StatsResp, error) {
+	rows, err := d.db.QueryContext(ctx, `select count('*'), count( distinct user_id) from urls`)
+	if err != nil {
+		return models.StatsResp{}, err
+	}
+	// не забываем закрыть курсор после завершения работы с данными
+	defer rows.Close()
+	var stats models.StatsResp
+	for rows.Next() {
+		if err := rows.Scan(&stats.UrlsCount, &stats.UserCount); err != nil {
+			return models.StatsResp{}, err
+		}
+	}
+	// необходимо проверить ошибки уровня курсора
+	if err = rows.Err(); err != nil {
+		return models.StatsResp{}, err
+	}
+	return stats, nil
+}

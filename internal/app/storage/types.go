@@ -13,6 +13,7 @@ type Storager interface {
 	Set(context.Context, string, string, int) error
 	BatchSet(context.Context, *[]models.BatchStore, int) error
 	Get(context.Context, string) (string, bool, error)
+	Stats(ctx context.Context) (models.StatsResp, error)
 }
 
 // Описание "хранителя"
