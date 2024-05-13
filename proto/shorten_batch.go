@@ -20,7 +20,7 @@ func (s *GRPCServer) ShortenBatch(ctx context.Context, in *ShortenBatchRequest) 
 	userID := GetUserIDFromMetadata(ctx)
 
 	if userID == 0 {
-		userID = (auth.GenerateUserId())
+		userID = (auth.GenerateUserID())
 	}
 	token, err := auth.BuildJWTString(userID)
 	if err == nil {
