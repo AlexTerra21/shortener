@@ -48,7 +48,7 @@ func WithAuth(h http.Handler) http.HandlerFunc {
 		}
 
 		if needAuthString {
-			userID = GenerateUserId()
+			userID = GenerateUserID()
 			token, err := BuildJWTString(userID)
 			if err == nil {
 				cookie.Value = token
@@ -65,7 +65,7 @@ func WithAuth(h http.Handler) http.HandlerFunc {
 }
 
 // Генерация UserID
-func GenerateUserId() int {
+func GenerateUserID() int {
 	return utils.RandInt()
 }
 

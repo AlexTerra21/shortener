@@ -31,7 +31,7 @@ func (s *GRPCServer) Shorten(ctx context.Context, in *ShortenRequest) (*ShortenR
 	userID := GetUserIDFromMetadata(ctx)
 
 	if userID == 0 {
-		userID = (auth.GenerateUserId())
+		userID = (auth.GenerateUserID())
 	}
 	token, err := auth.BuildJWTString(userID)
 	if err == nil {
