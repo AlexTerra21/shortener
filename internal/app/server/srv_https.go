@@ -48,6 +48,6 @@ func (s *HTTPSServer) Start() error {
 
 // Остановка HTTPS сервера
 func (s *HTTPSServer) Stop() error {
-	logger.Log().Info("Stoping HTTPS server")
+	logger.Log().Info("Stopping HTTPS server")
 	return s.https.Shutdown(context.Background())
 }

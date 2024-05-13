@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package shortener;
+
+option go_package = "shortener/pb";
+
+service Shortener {
+    rpc Shorten(ShortenRequest) returns (ShortenResponse);
+    rpc ShortenBatch(ShortenBatchRequest) returns (ShortenBatchResponse);
+    rpc GetUrls(Empty) returns (GetUrlsResponse);
+    rpc DeleteUrls(DeleteUrlsRequest) returns (Empty);
+}
+
+message Empty {}
+
+// Shorten
+message ShortenRequest {
+  string url = 1;
+}
+message ShortenResponse {
+  string result = 1;
+}
+
+// GetUrls
+message UrlsInfo {
+  string short_url = 1;
+  string original_url = 2;
+}
+message GetUrlsResponse {
+  repeated UrlsInfo urls = 1;
+}
+
+// ShortenBatch
+message ShortenBatchIn {
+  string correlation_id = 1;
+  string original_url = 2;
+}
+message ShortenBatchOut {
+  string correlation_id = 1;
+  string short_url = 2;
+}
+message ShortenBatchRequest {
+  repeated ShortenBatchIn urls = 1;
+}
+message ShortenBatchResponse {
+  repeated ShortenBatchOut urls = 1;
+}
+
+// DeleteUrls
+message DeleteUrlsRequest {
+  repeated string urls_id = 1;
+}
+

@@ -35,6 +35,6 @@ func (s *HTTPServer) Start() error {
 
 // Остановка HTTP сервера
 func (s *HTTPServer) Stop() error {
-	logger.Log().Info("Stoping HTTP server")
+	logger.Log().Info("Stopping HTTP server")
 	return s.http.Shutdown(context.Background())
 }
