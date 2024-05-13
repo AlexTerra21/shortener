@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"sync"
 
 	"go.uber.org/zap"
 
@@ -13,12 +14,14 @@ import (
 
 // Структура для хранения данных в памяти
 type Memory struct {
-	data []ShortenedURL
+	data  []ShortenedURL
+	mutex sync.RWMutex
 }
 
 // Инициализация хранилища
 func (m *Memory) New(string) error {
 	m.data = make([]ShortenedURL, 0)
+	m.mutex = sync.RWMutex{}
 	return nil
 }
 
@@ -61,4 +64,20 @@ func (m *Memory) Get(_ context.Context, idxURL string) (string, bool, error) {
 		return "", false, errors.New("URL not found")
 	}
 	return m.data[idx].OriginalURL, m.data[idx].DeletedFlag, nil
+}
+
+// Получение статистики по хранилищу
+func (m *Memory) Stats(ctx context.Context) (models.StatsResp, error) {
+	uniqUsersIDs := make(map[int]bool)
+
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+
+	for _, shortURL := range m.data {
+		uniqUsersIDs[shortURL.UUID] = true
+	}
+	return models.StatsResp{
+		UrlsCount: len(m.data),
+		UserCount: len(uniqUsersIDs),
+	}, nil
 }

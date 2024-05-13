@@ -11,6 +11,7 @@ import (
 	"github.com/AlexTerra21/shortener/internal/app/config"
 	"github.com/AlexTerra21/shortener/internal/app/logger"
 	"github.com/AlexTerra21/shortener/internal/app/server"
+	pb "github.com/AlexTerra21/shortener/proto"
 )
 
 var (
@@ -56,11 +57,17 @@ func run() (err error) {
 	}
 	defer config.Storage.S.Close()
 
-	server, err := server.NewServer(config)
+	restServer, err := server.NewServer(config)
 	if err != nil {
 		return err
 	}
-	defer server.Stop()
+	defer restServer.Stop()
+
+	grpcServer, err := pb.NewGRPCServer(config)
+	if err != nil {
+		return err
+	}
+	defer grpcServer.Stop()
 
 	config.InitAsync()
 
@@ -68,7 +75,14 @@ func run() (err error) {
 	signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
 	go func() {
-		if err := server.Start(); err != http.ErrServerClosed && err != nil {
+		if err := restServer.Start(); err != http.ErrServerClosed && err != nil {
+			logger.Log().Sugar().Errorf("Server error: %v", err)
+			signalCh <- syscall.SIGTERM
+		}
+	}()
+
+	go func() {
+		if err := grpcServer.Start(); err != nil {
 			logger.Log().Sugar().Errorf("Server error: %v", err)
 			signalCh <- syscall.SIGTERM
 		}

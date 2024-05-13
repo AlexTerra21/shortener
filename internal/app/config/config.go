@@ -19,6 +19,7 @@ type Config struct {
 	FileStoragePath string `json:"file_storage_path"`
 	DBConnectString string `json:"db_connect_string"`
 	EnableHTTPS     bool   `json:"enable_https"`
+	TrustedSubnet   string `json:"trusted_subnet"`
 	ConfigPath      string
 	Storage         *storage.Storage
 	DelQueue        *async.Async
@@ -35,6 +36,7 @@ func NewConfig() (*Config, error) {
 	flagDBConnectString := flag.String("d", "", "db connection string")
 	flagEnableHTTPS := flag.String("s", "", "enable HTTPS")
 	flagConfigPath := flag.String("c", "", "config path")
+	flagTrustedSubnet := flag.String("t", "", "trusted subnet (CIDR)")
 	flag.Parse()
 
 	config.ConfigPath = *flagConfigPath
@@ -53,6 +55,8 @@ func NewConfig() (*Config, error) {
 	config.FileStoragePath = priorityString(os.Getenv("FILE_STORAGE_PATH"), *flagFileStoragePath, configFromFile.FileStoragePath)
 	config.LogLevel = priorityString(os.Getenv("LOG_LEVEL"), *flagLogLevel, configFromFile.LogLevel, "info")
 	config.ServerAddress = priorityString(os.Getenv("SERVER_ADDRESS"), *flagServerAddress, configFromFile.ServerAddress, ":8080")
+	config.TrustedSubnet = priorityString(os.Getenv("TRUSTED_SUBNET"), *flagTrustedSubnet, configFromFile.TrustedSubnet, "")
+
 	enableHTTPS := priorityString(os.Getenv("ENABLE_HTTPS"), *flagEnableHTTPS, strconv.FormatBool(configFromFile.EnableHTTPS), "false")
 
 	if boolValue, err := strconv.ParseBool(enableHTTPS); err == nil {
@@ -94,7 +98,7 @@ func (c *Config) Print() {
 	fmt.Printf("DB connect string: %s\n", c.DBConnectString)
 	fmt.Printf("File storage path: %s\n", c.FileStoragePath)
 	fmt.Printf("Enable HTTPS: %v\n", c.EnableHTTPS)
-
+	fmt.Printf("Trusted Subnet: %v\n", c.TrustedSubnet)
 }
 
 // Выбор первой не пустой строки по порядку приоритета

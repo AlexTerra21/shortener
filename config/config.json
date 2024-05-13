@@ -4,5 +4,6 @@
     "log_level": "debug", 
     "file_storage_path": "./tmp/short-url-db.json", 
     "db_connect_string": "host=localhost user=shortner password=userpassword dbname=short_urls sslmode=disable", 
-    "enable_https": false
+    "enable_https": false,
+    "trusted_subnet": "192.168.1.0/24"
 }
